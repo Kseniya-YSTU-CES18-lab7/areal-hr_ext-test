@@ -1,0 +1,55 @@
+# ORGANIZATIONS API TESTS
+# Base URL: http://localhost:3000
+
+# Get all organizations (должен вернуть пустой массив [])
+GET http://localhost:3000/organizations
+
+# Create organization
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО ТЕСТ",
+  "comment": "Тестовая организация 1"
+}
+
+#Ещё одна (для проверки списка)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО ТЕСТ 2",
+  "comment": "Тестовая организация 2"
+}
+
+### Get all organizations (должен вернуть 2 записи)
+GET http://localhost:3000/organizations
+
+### Get one organization by ID
+GET http://localhost:3000/organizations/1
+
+### Update organization
+PATCH http://localhost:3000/organizations/1
+Content-Type: application/json
+
+{
+  "comment": "Обновлённый комментарий после теста"
+}
+
+### Создание дубликата (должен вернуть 409 Conflict)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО ТЕСТ",
+  "comment": "Проверка на дубликат"
+}
+
+### Soft delete organization
+DELETE http://localhost:3000/organizations/1
+
+### Получение удалённой (должен вернуть 404)
+GET http://localhost:3000/organizations/1
+
+### Get all organizations (должен вернуть только 1 активную)
+GET http://localhost:3000/organizations

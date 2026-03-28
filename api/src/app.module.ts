@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import databaseConfig from './config/database.config';
+import { OrganizationsModule } from './organizations/organizations.module';
 
 @Module({
   imports: [ // Конфигурация из .env файла
@@ -17,12 +18,19 @@ import databaseConfig from './config/database.config';
     // Подключение TypeORM к PostgreSQL
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const db = config.get('database');
-        if (!db) throw new Error('DB config missing');
-        return db;
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
+        // Проверка что конфиг существует
+        const dbConfig = config.get<TypeOrmModuleOptions>('database');
+        
+        if (!dbConfig) {
+          throw new Error('Ошибка: конфигурация базы данных не найдена. Проверь .env файл');
+        }
+        
+        return dbConfig;
       },
     }),
+
+    OrganizationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

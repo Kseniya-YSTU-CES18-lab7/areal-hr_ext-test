@@ -11,7 +11,7 @@ export default registerAs(
     const dbHost = process.env.DB_HOST ?? '127.0.0.1';
     const dbPort = parseInt(process.env.DB_PORT ?? '5434', 10);
     const dbUser = process.env.DB_USERNAME ?? 'postgres';
-    const dbPass = process.env.DB_PASSWORD ?? '';
+    const dbPass = process.env.DB_PASSWORD?.toString().trim() || '159753';
     const dbName = process.env.DB_NAME ?? 'hr_management_db';
 
     return {
@@ -25,7 +25,7 @@ export default registerAs(
       // Настройки TypeORM
       autoLoadEntities: true,      
       synchronize: false,          
-      migrationsRun: true,        
+      migrationsRun: false,        
       migrationsTableName: 'pgmigrations', 
       migrations: ['dist/migrations/*.js'],
     };

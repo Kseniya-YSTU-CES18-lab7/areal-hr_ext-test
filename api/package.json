@@ -18,10 +18,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migration:create": "node-pg-migrate create --migrations-dir src/migrations",
-    "migration:up": "node-pg-migrate up --migrations-dir src/migrations --config-file pg-migrate.config.js",
-    "migration:down": "node-pg-migrate down --migrations-dir src/migrations --config-file pg-migrate.config.js",
-    "migration:redo": "node-pg-migrate redo --migrations-dir src/migrations --config-file pg-migrate.config.js"
+  "migration:create": "node-pg-migrate create --migrations-dir src/migrations --config-file pg-migrate.config.json",
+    "migration:up": "node-pg-migrate up --migrations-dir src/migrations --config-file pg-migrate.config.json",
+    "migration:down": "node-pg-migrate down --migrations-dir src/migrations --config-file pg-migrate.config.json",
+    "migration:redo": "node-pg-migrate redo --migrations-dir src/migrations --config-file pg-migrate.config.json"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

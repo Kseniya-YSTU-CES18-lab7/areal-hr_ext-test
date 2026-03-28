@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: 159753    
       POSTGRES_DB: hr_management_db
     ports:
-      - "5432:5432"                      
+      - "5434:5432"                      
     volumes:
       - pgdata:/var/lib/postgresql/data 
 

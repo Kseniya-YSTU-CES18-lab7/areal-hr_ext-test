@@ -1,0 +1,13 @@
+{
+  "host": "127.0.0.1",
+  "port": 5434,
+  "user": "postgres",
+  "password": "159753",
+  "database": "hr_management_db",
+  "migrationsTable": "migrations",
+  "migrationsDir": "src/migrations",
+  "dir": "src/migrations",
+  "checkOrder": true,
+  "verbose": true,
+  "ignorePattern": ".*\\.map\\.js"
+}

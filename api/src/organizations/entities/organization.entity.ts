@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Department } from '../../departments/entities/department.entity';
 
 /**
  * Сущность «Организация», таблица organizations в БД
@@ -43,4 +44,8 @@ export class Organization {
     comment: 'Дата мягкого удаления (NULL = запись активна)'
   })
   deleted_at: Date | null;
+
+  // 🔗 Связь с отделами (1:n)
+  @OneToMany(() => Department, (department) => department.organization)
+  departments: Department[];
 }

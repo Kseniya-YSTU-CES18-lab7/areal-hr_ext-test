@@ -5,9 +5,9 @@
  */
 export const shorthands = {
   timestamps: {
-    created_at: { type: 'timestamp', default: 'now()', notNull: true },
-    updated_at: { type: 'timestamp', default: 'now()', notNull: true },
-    deleted_at: { type: 'timestamp', default: null },
+    created_at: { type: 'timestamp', default: 'now()', notNull: true, comment: 'Дата и время создания записи' },
+    updated_at: { type: 'timestamp', default: 'now()', notNull: true, comment: 'Дата и время последнего обновления' },
+    deleted_at: { type: 'timestamp', default: null, comment: 'Дата мягкого удаления (NULL = запись активна)' },
   },
 };
 
@@ -16,17 +16,15 @@ export const shorthands = {
  */
 export const up = (pgm) => {
   pgm.createTable('organizations', {
-    id: { type: 'serial', primaryKey: true },
-    name: { type: 'varchar(255)', notNull: true },
-    comment: { type: 'text' },
+    id: { type: 'serial', primaryKey: true, comment: 'Уникальный идентификатор организации' },
+    name: { type: 'varchar(255)', notNull: true, comment: 'Полное наименование организации' },
+    comment: { type: 'text', nullable: true, comment: 'Произвольные заметки об организации' },
     ...shorthands.timestamps,
   });
 
-  // Индекс для быстрого поиска по имени
-  pgm.createIndex('organizations', 'name');
-  
-  // Индекс для мягкого удаления
-  pgm.createIndex('organizations', 'deleted_at');
+  // Поиск по названию и фильтрация удалённых записей (для soft delete)
+  pgm.createIndex('organizations', 'name', { name: 'idx_organizations_name' });
+  pgm.createIndex('organizations', 'deleted_at', { name: 'idx_organizations_deleted_at' });
 };
 
 /**

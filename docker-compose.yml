@@ -3,11 +3,14 @@ services:
   # Сервис базы данных PostgreSQL
   db:
     image: postgres:17-alpine           
-    container_name: areal_hr_db        
+    container_name: areal_hr_db
+    # Учётные данные (передаются в контейнер)        
     environment:                       
       POSTGRES_USER: postgres         
       POSTGRES_PASSWORD: 159753    
       POSTGRES_DB: hr_management_db
+    # Проброс портов: хост:контейнер
+    # Порт 5434, (т.к. 5432/5433 заняты локальной PostgreSQL на Windows)
     ports:
       - "5434:5432"                      
     volumes:

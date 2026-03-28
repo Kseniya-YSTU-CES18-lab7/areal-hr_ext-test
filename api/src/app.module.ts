@@ -7,22 +7,20 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import databaseConfig from './config/database.config';
 
 @Module({
-  imports: [ // 1. Конфигурация из .env файла
+  imports: [ // Конфигурация из .env файла
     ConfigModule.forRoot({
-      isGlobal: true,          // ConfigService будет доступен везде
-      envFilePath: ['.env'],   // .env в корне проекта
-      load: [databaseConfig],  // загружаем наш конфиг БД
+      isGlobal: true,          
+      envFilePath: ['.env'],   
+      load: [databaseConfig],  
     }),
 
-    // 2. Подключение TypeORM к PostgreSQL
+    // Подключение TypeORM к PostgreSQL
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
-        const config = configService.get<TypeOrmModuleOptions>('database');
-        if (!config) {
-          throw new Error('Database configuration not found');
-        }
-        return config;
+      useFactory: (config: ConfigService) => {
+        const db = config.get('database');
+        if (!db) throw new Error('DB config missing');
+        return db;
       },
     }),
   ],

@@ -122,3 +122,37 @@ git checkout main
 # Слить ветку с текущей
 git merge feature/название
 ```
+
+# Неделя 2: Реализация CRUD — Организации, Отделы, Должности
+
+# Backend (NestJS)
+- Проект инициализирован в папке `api/`
+- Подключение к БД: TypeORM + PostgreSQL 17 (Docker) + ConfigService
+- Миграции: `node-pg-migrate` с конфигурацией в `pg-migrate.config.json`
+
+# CRUD API
+
+- Organizations: POST/GET/PATCH/DELETE /organizations — валидация, дубликаты, soft delete
+- Departments: POST/GET/PATCH/DELETE /departments + GET /departments/tree — вложенная структура, дерево отделов, soft delete
+- Positions: POST/GET/PATCH/DELETE /positions — уникальность названия, soft delete
+
+# Тестирование
+- Файл: [`api/http/organizations.http`](api/http/organizations.http)
+- Инструмент: VS Code REST Client
+- Покрытые сценарии: создание, чтение, обновление, мягкое удаление, проверка дубликатов
+
+# Запуск
+
+```bash
+# 1. Запустить БД
+docker-compose up -d db
+
+# 2. Применить миграции
+cd api
+npm run migration:up
+
+# 3. Запустить backend
+npm run start:dev
+
+# 4. Тестировать API
+# Открыть api/http/organizations.http в VS Code → "Send Request"

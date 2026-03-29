@@ -7,6 +7,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import databaseConfig from './config/database.config';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PositionsModule } from './positions/positions.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [ // Конфигурация из .env файла
@@ -33,6 +34,7 @@ import { PositionsModule } from './positions/positions.module';
 
     OrganizationsModule,
     PositionsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

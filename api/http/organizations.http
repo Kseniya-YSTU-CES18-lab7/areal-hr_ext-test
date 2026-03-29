@@ -53,3 +53,86 @@ GET http://localhost:3000/organizations/1
 
 ### Get all organizations (должен вернуть только 1 активную)
 GET http://localhost:3000/organizations
+
+### === DEPARTMENTS TESTS ===
+
+# Создать отдел в организации 1
+POST http://localhost:3000/departments
+Content-Type: application/json
+
+{
+  "organization_id": 1,
+  "name": "Бухгалтерия",
+  "comment": "Финансовый отдел"
+}
+
+###
+
+# Создать подотдел (проверка вложенности)
+POST http://localhost:3000/departments
+Content-Type: application/json
+
+{
+  "organization_id": 1,
+  "parent_id": 1,
+  "name": "Расчёт зарплаты",
+  "comment": "Подразделение бухгалтерии"
+}
+
+# Получить дерево отделов для организации 1
+GET http://localhost:3000/departments/tree?organizationId=1
+
+# Получить все отделы организации
+GET http://localhost:3000/departments?organizationId=1
+
+# Обновить отдел
+PATCH http://localhost:3000/departments/1
+Content-Type: application/json
+
+{
+  "comment": "Обновлённое описание отдела"
+}
+
+# Мягкое удаление отдела
+DELETE http://localhost:3000/departments/1
+
+
+### === POSITIONS TESTS ===
+
+# Создать должность
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "Бухгалтер"
+}
+
+# Создать ещё одну должность
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "Менеджер"
+}
+
+# Попробовать создать дубликат (должен вернуть 409 Conflict)
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "Бухгалтер"
+}
+
+# Получить все должности
+GET http://localhost:3000/positions
+
+# Обновить должность
+PATCH http://localhost:3000/positions/1
+Content-Type: application/json
+
+{
+  "name": "Старший бухгалтер"
+}
+
+# Мягкое удаление должности
+DELETE http://localhost:3000/positions/1

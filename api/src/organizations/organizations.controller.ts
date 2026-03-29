@@ -24,11 +24,20 @@ export class OrganizationsController {
   /**
    * Создать организацию
    */
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateOrganizationDto) {
-    return this.service.create(dto);
+@Post()
+@HttpCode(HttpStatus.CREATED)
+async create(@Body() dto: CreateOrganizationDto) {
+  try {
+      console.log('! [CONTROLLER] POST /organizations вызван!');
+    console.log('Поиск [Controller] Creating:', dto);  // ← Лог для отладки
+    const result = await this.service.create(dto);
+    console.log('+ [Controller] Created:', result);  // ← Лог результата
+    return result;
+  } catch (error) {
+    console.error('- [Controller] Error:', error.message);  // ← Лог ошибки
+    throw error;
   }
+}
 
   /**
    * Получить список всех активных организаций

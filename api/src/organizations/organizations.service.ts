@@ -18,19 +18,33 @@ export class OrganizationsService {
   /**
    * Создать новую организацию
    */
-  async create(dto: CreateOrganizationDto): Promise<Organization> {
-    // Проверка на дубликат названия (с учётом мягкого удаления)
+async create(dto: CreateOrganizationDto): Promise<Organization> {
+  console.log('Поиск [DEBUG] create() вызван с:', JSON.stringify(dto));
+  
+  try {
     const existing = await this.repo.findOne({
       where: { name: dto.name, deleted_at: IsNull() }
     });
     
+    console.log('🔍 [DEBUG] existing:', existing);
+    
     if (existing) {
+      console.log('! [DEBUG] Дубликат!');
       throw new ConflictException(`Организация "${dto.name}" уже существует`);
     }
 
     const organization = this.repo.create(dto);
-    return await this.repo.save(organization);
+    console.log('Поиск [DEBUG] Перед save():', organization);
+    
+    const saved = await this.repo.save(organization);
+    console.log('+ [DEBUG] После save():', saved);
+    
+    return saved;
+  } catch (error) {
+    console.error('- [DEBUG] Ошибка в create():', error.message);
+    throw error;
   }
+}
 
   /**
    * Получить все активные организации

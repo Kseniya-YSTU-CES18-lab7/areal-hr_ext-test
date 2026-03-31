@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Organization } from './entities/organization.entity';
@@ -10,6 +10,8 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
  */
 @Injectable()
 export class OrganizationsService {
+  private readonly logger = new Logger(OrganizationsService.name);  // ← добавить
+
   constructor(
     @InjectRepository(Organization)
     private readonly repo: Repository<Organization>,
@@ -18,33 +20,34 @@ export class OrganizationsService {
   /**
    * Создать новую организацию
    */
-async create(dto: CreateOrganizationDto): Promise<Organization> {
-  console.log('Поиск [DEBUG] create() вызван с:', JSON.stringify(dto));
-  
-  try {
-    const existing = await this.repo.findOne({
-      where: { name: dto.name, deleted_at: IsNull() }
-    });
+  async create(dto: CreateOrganizationDto): Promise<Organization> {
+    // Вместо console.log
+    this.logger.log(`Поиск [DEBUG] create() вызван с: ${JSON.stringify(dto)}`);
     
-    console.log('🔍 [DEBUG] existing:', existing);
-    
-    if (existing) {
-      console.log('! [DEBUG] Дубликат!');
-      throw new ConflictException(`Организация "${dto.name}" уже существует`);
-    }
+    try {
+      const existing = await this.repo.findOne({
+        where: { name: dto.name, deleted_at: IsNull() }
+      });
+      
+            this.logger.log(`Поиск [DEBUG] existing: ${existing}`);
+      
+      if (existing) {
+            this.logger.warn(`! [DEBUG] Дубликат!`);
+        throw new ConflictException(`Организация "${dto.name}" уже существует`);
+      }
 
-    const organization = this.repo.create(dto);
-    console.log('Поиск [DEBUG] Перед save():', organization);
-    
-    const saved = await this.repo.save(organization);
-    console.log('+ [DEBUG] После save():', saved);
-    
-    return saved;
-  } catch (error) {
-    console.error('- [DEBUG] Ошибка в create():', error.message);
-    throw error;
+      const organization = this.repo.create(dto);
+      this.logger.log(`Поиск [DEBUG] Перед save(): ${organization}`);
+      
+      const saved = await this.repo.save(organization);
+      this.logger.log(`+ [DEBUG] После save(): ${saved}`);
+      
+      return saved;
+    } catch (error) {
+      this.logger.error(`- [DEBUG] Ошибка в create(): ${error.message}`);
+      throw error;
+    }
   }
-}
 
   /**
    * Получить все активные организации
@@ -101,7 +104,7 @@ async create(dto: CreateOrganizationDto): Promise<Organization> {
    * Пометить организацию как удалённую (мягкое удаление)
    */
   async remove(id: number): Promise<void> {
-    const organization = await this.findOne(id); // проверит, что не удалена
+    const organization = await this.findOne(id); // проверка, что не удалена
     
     await this.repo.update(id, { 
       deleted_at: new Date() 

@@ -8,20 +8,20 @@ import databaseConfig from './config/database.config';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PositionsModule } from './positions/positions.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { join } from 'path';
 
 @Module({
-  imports: [ // Конфигурация из .env файла
+  imports: [
     ConfigModule.forRoot({
-      isGlobal: true,          
-      envFilePath: ['.env'],   
-      load: [databaseConfig],  
+      isGlobal: true,
+      // Путь к .env в корне проекта
+      envFilePath: [join(process.cwd(), '..', '.env')],
+      load: [databaseConfig],
     }),
 
-    // Подключение TypeORM к PostgreSQL
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService): TypeOrmModuleOptions => {
-        // Проверка что конфиг существует
         const dbConfig = config.get<TypeOrmModuleOptions>('database');
         
         if (!dbConfig) {

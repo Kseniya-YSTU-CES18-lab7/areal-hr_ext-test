@@ -8,7 +8,8 @@ import {
   Delete, 
   ParseIntPipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  Logger  
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
@@ -19,25 +20,29 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
  */
 @Controller('organizations')
 export class OrganizationsController {
+  private readonly logger = new Logger(OrganizationsController.name);  
+
   constructor(private readonly service: OrganizationsService) {}
 
   /**
    * Создать организацию
    */
-@Post()
-@HttpCode(HttpStatus.CREATED)
-async create(@Body() dto: CreateOrganizationDto) {
-  try {
-      console.log('! [CONTROLLER] POST /organizations вызван!');
-    console.log('Поиск [Controller] Creating:', dto);  // ← Лог для отладки
-    const result = await this.service.create(dto);
-    console.log('+ [Controller] Created:', result);  // ← Лог результата
-    return result;
-  } catch (error) {
-    console.error('- [Controller] Error:', error.message);  // ← Лог ошибки
-    throw error;
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() dto: CreateOrganizationDto) {
+    try {
+      this.logger.log('! [CONTROLLER] POST /organizations вызван!');
+      this.logger.log(`Поиск [Controller] Creating: ${JSON.stringify(dto)}`);
+      
+      const result = await this.service.create(dto);
+      
+      this.logger.log(`+ [Controller] Created: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`- [Controller] Error: ${error.message}`);
+      throw error;
+    }
   }
-}
 
   /**
    * Получить список всех активных организаций

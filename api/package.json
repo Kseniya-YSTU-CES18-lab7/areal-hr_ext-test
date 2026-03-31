@@ -17,11 +17,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migration:create": "node-pg-migrate create --migrations-dir src/migrations --config-file pg-migrate.config.json",
-    "migration:up": "node-pg-migrate up --migrations-dir src/migrations --config-file pg-migrate.config.json",
-    "migration:down": "node-pg-migrate down --migrations-dir src/migrations --config-file pg-migrate.config.json",
-    "migration:redo": "node-pg-migrate redo --migrations-dir src/migrations --config-file pg-migrate.config.json"
+    "test:e2e": "jest --config ./test/jest-e2e.cjs",
+    "migration:create": "node-pg-migrate create --migrations-dir src/migrations --database-url-env DATABASE_URL",
+    "migration:up": "node-pg-migrate up --migrations-dir src/migrations --database-url-env DATABASE_URL",
+    "migration:down": "node-pg-migrate down --migrations-dir src/migrations --database-url-env DATABASE_URL",
+    "migration:redo": "node-pg-migrate redo --migrations-dir src/migrations --database-url-env DATABASE_URL"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

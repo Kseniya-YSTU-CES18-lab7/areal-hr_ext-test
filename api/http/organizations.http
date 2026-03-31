@@ -136,3 +136,11 @@ Content-Type: application/json
 
 # Мягкое удаление должности
 DELETE http://localhost:3000/positions/1
+
+### Создать должность (с пробелами)
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "  Бухгалтер  "
+}

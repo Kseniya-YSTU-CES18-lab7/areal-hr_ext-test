@@ -20,38 +20,43 @@ import { UpdatePositionDto } from './dto/update-position.dto';
 @Controller('positions')
 export class PositionsController {
   private readonly logger = new Logger(PositionsController.name);
+  
   constructor(private readonly service: PositionsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreatePositionDto) {
-    return this.service.create(dto);
+  async create(@Body() dto: CreatePositionDto) {
+    this.logger.log('POST /positions - create request');
+    return await this.service.create(dto);
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  async findAll() {
+    this.logger.log('GET /positions - find all request');
+    return await this.service.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`GET /positions/${id} - find one request`);
+    return await this.service.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePositionDto) {
-    return this.service.update(id, dto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePositionDto) {
+    this.logger.log(`PATCH /positions/${id} - update request`);
+    return await this.service.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  
-   // Выполняет мягкое удаление должности
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  // Выполняет мягкое удаление должности
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`DELETE /positions/${id} - remove request`);
+    return await this.service.remove(id);
   }
 
-    /**
+  /**
    * Восстановить удалённую должность
    */
   @Post(':id/restore')

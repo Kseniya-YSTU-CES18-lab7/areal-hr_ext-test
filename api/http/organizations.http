@@ -153,3 +153,22 @@ POST http://localhost:3000/departments/1/restore
 
 ### Восстановить удалённую должность
 POST http://localhost:3000/positions/1/restore
+
+
+### GET /organizations
+GET http://localhost:3000/organizations
+
+### POST /organizations
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "Тестовая",
+  "comment": "Проверка"
+}
+
+### GET /departments/tree?organizationId=1
+GET http://localhost:3000/departments/tree?organizationId=1
+
+### POST /positions/1/restore
+POST http://localhost:3000/positions/1/restore

@@ -48,24 +48,27 @@ export class OrganizationsController {
    * Получить список всех активных организаций
    */
   @Get()
-  findAll() {
-    return this.service.findAll();
+  async findAll() {
+    this.logger.log('GET /organizations - find all request');
+    return await this.service.findAll();
   }
 
   /**
    * Найти организацию по ID
    */
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`GET /organizations/${id} - find one request`);
+    return await this.service.findOne(id);
   }
 
   /**
    * Обновить организацию
    */
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrganizationDto) {
-    return this.service.update(id, dto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrganizationDto) {
+    this.logger.log(`PATCH /organizations/${id} - update request`);
+    return await this.service.update(id, dto);
   }
 
   /**
@@ -73,11 +76,12 @@ export class OrganizationsController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`DELETE /organizations/${id} - remove request`);
+    return await this.service.remove(id);
   }
 
-    /**
+  /**
    * Восстановить удалённую организацию
    */
   @Post(':id/restore')

@@ -14,7 +14,7 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-   Logger
+  Logger
 } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -23,41 +23,48 @@ import { UpdateDepartmentDto } from './dto/update-department.dto';
 @Controller('departments')
 export class DepartmentsController {
   private readonly logger = new Logger(DepartmentsController.name);
+  
   constructor(private readonly service: DepartmentsService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateDepartmentDto) {
-    return this.service.create(dto);
+  async create(@Body() dto: CreateDepartmentDto) {
+    this.logger.log('POST /departments - create request');
+    return await this.service.create(dto);
   }
 
   @Get()
-  findAll(@Query('organizationId') organizationId?: string) {
-    return this.service.findAll(organizationId ? parseInt(organizationId, 10) : undefined);
+  async findAll(@Query('organizationId') organizationId?: string) {
+    this.logger.log('GET /departments - find all request');
+    return await this.service.findAll(organizationId ? parseInt(organizationId, 10) : undefined);
   }
 
   /**
    * Возвращает иерархическую структуру отделов для указанной организации
    */
   @Get('tree')
-  findTree(@Query('organizationId', ParseIntPipe) organizationId: number) {
-    return this.service.findTree(organizationId);
+  async findTree(@Query('organizationId', ParseIntPipe) organizationId: number) {
+    this.logger.log(`GET /departments/tree - tree request for org ${organizationId}`);
+    return await this.service.findTree(organizationId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`GET /departments/${id} - find one request`);
+    return await this.service.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDepartmentDto) {
-    return this.service.update(id, dto);
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDepartmentDto) {
+    this.logger.log(`PATCH /departments/${id} - update request`);
+    return await this.service.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.service.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`DELETE /departments/${id} - remove request`);
+    return await this.service.remove(id);
   }
 
   /**

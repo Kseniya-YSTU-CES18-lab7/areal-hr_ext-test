@@ -10,7 +10,8 @@ import {
   Delete, 
   ParseIntPipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+  Logger
 } from '@nestjs/common';
 import { PositionsService } from './positions.service';
 import { CreatePositionDto } from './dto/create-position.dto';
@@ -18,6 +19,7 @@ import { UpdatePositionDto } from './dto/update-position.dto';
 
 @Controller('positions')
 export class PositionsController {
+  private readonly logger = new Logger(PositionsController.name);
   constructor(private readonly service: PositionsService) {}
 
   @Post()
@@ -47,5 +49,15 @@ export class PositionsController {
    // Выполняет мягкое удаление должности
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+
+    /**
+   * Восстановить удалённую должность
+   */
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restore(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`POST /positions/${id}/restore - restore request`);
+    return await this.service.restore(id);
   }
 }

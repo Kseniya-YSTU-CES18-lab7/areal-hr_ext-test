@@ -13,7 +13,8 @@ import {
   Query,
   ParseIntPipe,
   HttpCode,
-  HttpStatus
+  HttpStatus,
+   Logger
 } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -21,6 +22,7 @@ import { UpdateDepartmentDto } from './dto/update-department.dto';
 
 @Controller('departments')
 export class DepartmentsController {
+  private readonly logger = new Logger(DepartmentsController.name);
   constructor(private readonly service: DepartmentsService) {}
 
   @Post()
@@ -56,5 +58,15 @@ export class DepartmentsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+
+  /**
+   * Восстановить удалённый отдел
+   */
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restore(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`POST /departments/${id}/restore - restore request`);
+    return await this.service.restore(id);
   }
 }

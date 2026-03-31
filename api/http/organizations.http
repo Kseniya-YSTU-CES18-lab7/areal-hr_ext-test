@@ -144,3 +144,12 @@ Content-Type: application/json
 {
   "name": "  Бухгалтер  "
 }
+
+### Восстановить удалённую организацию
+POST http://localhost:3000/organizations/1/restore
+
+### Восстановить удалённый отдел
+POST http://localhost:3000/departments/1/restore
+
+### Восстановить удалённую должность
+POST http://localhost:3000/positions/1/restore

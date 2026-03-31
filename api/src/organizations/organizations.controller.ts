@@ -76,4 +76,14 @@ export class OrganizationsController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
   }
+
+    /**
+   * Восстановить удалённую организацию
+   */
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restore(@Param('id', ParseIntPipe) id: number) {
+    this.logger.log(`POST /organizations/${id}/restore - restore request`);
+    return await this.service.restore(id);
+  }
 }

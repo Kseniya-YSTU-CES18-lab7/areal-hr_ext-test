@@ -25,9 +25,6 @@ export default registerAs(
       // Настройки TypeORM
       autoLoadEntities: true,      
       synchronize: false,          
-      migrationsRun: false,        
-      migrationsTableName: 'pgmigrations', 
-      migrations: ['dist/migrations/*.js'],
     };
   },
 );

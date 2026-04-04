@@ -20,10 +20,10 @@ export class AddressesService {
 
   // Создание адреса (если у сотрудника ещё нет адреса)
   async create(dto: CreateAddressDto): Promise<Address> {
-    this.logger.log(`Creating address for employee: ${dto.employee_id}`);
+    this.logger.log(`Creating address for employee: ${dto.employeeId}`);
     
     const existing = await this.repo.findOne({
-      where: { employee_id: dto.employee_id, deleted_at: IsNull() },
+      where: { employeeId: dto.employeeId, deletedAt: IsNull() },
     });
     if (existing) {
       throw new NotFoundException('У сотрудника уже есть адрес');
@@ -37,7 +37,7 @@ export class AddressesService {
   async findAll(): Promise<Address[]> {
     this.logger.log('Finding all addresses');
     return await this.repo.find({
-      where: { deleted_at: IsNull() },
+      where: { deletedAt: IsNull() },
       relations: ['employee'],
     });
   }
@@ -46,7 +46,7 @@ export class AddressesService {
   async findOne(id: number): Promise<Address> {
     this.logger.log(`Finding address by id: ${id}`);
     const address = await this.repo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { id, deletedAt: IsNull() },
       relations: ['employee'],
     });
     if (!address) {
@@ -59,7 +59,7 @@ export class AddressesService {
   async findByEmployeeId(employeeId: string): Promise<Address> {
     this.logger.log(`Finding address by employee_id: ${employeeId}`);
     const address = await this.repo.findOne({
-      where: { employee_id: employeeId, deleted_at: IsNull() },
+      where: { employeeId: employeeId, deletedAt: IsNull() },
       relations: ['employee'],
     });
     if (!address) {
@@ -72,7 +72,7 @@ export class AddressesService {
   async update(id: number, dto: UpdateAddressDto): Promise<Address> {
     this.logger.log(`Updating address: ${id}`);
     await this.findOne(id);
-    await this.repo.update(id, { ...dto, updated_at: new Date() });
+    await this.repo.update(id, { ...dto });
     return await this.findOne(id);
   }
 
@@ -80,12 +80,12 @@ export class AddressesService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Soft deleting address: ${id}`);
     await this.findOne(id);
-    await this.repo.update(id, { deleted_at: new Date() });
+    await this.repo.update(id, { deletedAt: new Date() });
   }
 
   // Восстановление адреса
   async restore(id: number): Promise<void> {
     this.logger.log(`Restoring address: ${id}`);
-    await this.repo.update(id, { deleted_at: null });
+    await this.repo.update(id, { deletedAt: null });
   }
 }

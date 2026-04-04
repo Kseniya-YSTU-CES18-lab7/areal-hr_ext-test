@@ -8,7 +8,7 @@ import { Transform } from 'class-transformer';
 export class CreateAddressDto {
   @IsUUID('4', { message: 'employee_id должен быть корректным UUID' })
   @IsNotEmpty({ message: 'employee_id не может быть пустым' })
-  employee_id: string;
+  employeeId: string;
 
   // Область/край (обязательное поле)
   @IsString({ message: 'Область должна быть строкой' })

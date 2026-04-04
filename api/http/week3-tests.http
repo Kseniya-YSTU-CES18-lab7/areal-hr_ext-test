@@ -1,0 +1,139 @@
+### === НЕДЕЛЯ 3: ТЕСТЫ CRUD ===
+# Base URL: http://localhost:3000
+
+### === EMPLOYEES ===
+
+### POST Создать сотрудника
+POST http://localhost:3000/employees
+Content-Type: application/json
+
+{
+  "surname": "Кислякова",
+  "firstName": "Ксения",
+  "patronymic": "Александровна",
+  "birthDate": "2005-04-13"
+}
+
+### GET Получить всех сотрудников
+GET http://localhost:3000/employees
+
+### GET Получить сотрудника по ID
+GET http://localhost:3000/employees/c450fc4d-48bc-4734-a15f-22c50156405b
+
+### PATCH Обновить сотрудника
+PATCH http://localhost:3000/employees/c450fc4d-48bc-4734-a15f-22c50156405b
+Content-Type: application/json
+
+{
+  "patronymic": "Александровна обновлённая"
+}
+
+### DELETE Мягкое удаление сотрудника
+DELETE http://localhost:3000/employees/c450fc4d-48bc-4734-a15f-22c50156405b
+
+### POST Восстановление сотрудника
+POST http://localhost:3000/employees/c450fc4d-48bc-4734-a15f-22c50156405b/restore
+
+
+### === PASSPORTS ===
+
+### POST Создать паспорт для сотрудника
+POST http://localhost:3000/passports
+Content-Type: application/json
+
+{
+  "employeeId": "c450fc4d-48bc-4734-a15f-22c50156405b",
+  "series": "4500",
+  "number": "123456",
+  "issueDate": "2025-01-20",
+  "departmentCode": "123-456",
+  "issuedBy": "УФМС России по г. Ярославль"
+}
+
+### GET Получить паспорт по ID (после создания — замени 1 на реальный id из ответа)
+GET http://localhost:3000/passports/1
+
+### GET Получить паспорт по employeeId
+GET http://localhost:3000/passports/by-employee/c450fc4d-48bc-4734-a15f-22c50156405b
+
+
+### === ADDRESSES ===
+
+### POST Создать адрес для сотрудника
+POST http://localhost:3000/addresses
+Content-Type: application/json
+
+{
+  "employeeId": "c450fc4d-48bc-4734-a15f-22c50156405b",
+  "region": "Ярославская область",
+  "locality": "г. Ярославль",
+  "street": "пр. Московский",
+  "house": "88",
+  "building": "2",
+  "apartment": "515"
+}
+
+### GET Получить адрес по employeeId
+GET http://localhost:3000/addresses/by-employee/c450fc4d-48bc-4734-a15f-22c50156405b
+
+
+### === FILES ===
+
+### POST Добавить файл сотруднику
+# Используем camelCase
+POST http://localhost:3000/files
+Content-Type: application/json
+
+{
+  "employeeId": "c450fc4d-48bc-4734-a15f-22c50156405b",
+  "title": "Паспорт страница 1",
+  "filePath": "/uploads/passports/ivanov_page1.jpg",
+  "mimeType": "image/jpeg",
+  "sizeBytes": 245678
+}
+
+### GET Получить все файлы сотрудника
+GET http://localhost:3000/files/by-employee/c450fc4d-48bc-4734-a15f-22c50156405b
+
+
+### === HR_OPERATIONS ===
+
+### POST Приём на работу
+# Без departmentId и positionId, т.к. они ещё не созданы
+POST http://localhost:3000/hr-operations
+Content-Type: application/json
+
+{
+  "employeeId": "c450fc4d-48bc-4734-a15f-22c50156405b",
+  "operationType": "hire",
+  "salary": 75000.00,
+  "operationDate": "2024-01-15"
+}
+
+### POST Изменение зарплаты
+POST http://localhost:3000/hr-operations
+Content-Type: application/json
+
+{
+  "employeeId": "c450fc4d-48bc-4734-a15f-22c50156405b",
+  "operationType": "change_salary",
+  "salary": 85000.00,
+  "operationDate": "2024-06-01"
+}
+
+### GET Получить все операции сотрудника
+GET http://localhost:3000/hr-operations/by-employee/c450fc4d-48bc-4734-a15f-22c50156405b
+
+
+### === HISTORY ===
+
+### GET Получить всю историю изменений
+GET http://localhost:3000/history
+
+### GET Получить историю по сущности
+# Query params: camelCase (entityType, entityId)
+GET http://localhost:3000/history/by-entity?entityType=Employee&entityId=c450fc4d-48bc-4734-a15f-22c50156405b
+
+### GET Получить историю по пользователю
+# Пока не тестируем — таблица users ещё не создана
+# GET http://localhost:3000/history/by-user/<uuid-пользователя>

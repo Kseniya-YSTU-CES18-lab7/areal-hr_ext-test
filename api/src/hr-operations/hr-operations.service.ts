@@ -20,7 +20,7 @@ export class HrOperationsService {
 
   // Создание кадровой операции
   async create(dto: CreateHrOperationDto): Promise<HrOperation> {
-    this.logger.log(`Creating HR operation: ${dto.operation_type} for employee: ${dto.employee_id}`);
+    this.logger.log(`Creating HR operation: ${dto.operationType} for employee: ${dto.employeeId}`);
     const operation = this.repo.create(dto);
     return await this.repo.save(operation);
   }
@@ -29,9 +29,9 @@ export class HrOperationsService {
   async findAll(): Promise<HrOperation[]> {
     this.logger.log('Finding all HR operations');
     return await this.repo.find({
-      where: { deleted_at: IsNull() },
+      where: { deletedAt: IsNull() },
       relations: ['employee', 'department', 'position'],
-      order: { operation_date: 'DESC' },
+      order: { operationDate: 'DESC' },
     });
   }
 
@@ -39,9 +39,9 @@ export class HrOperationsService {
   async findByEmployeeId(employeeId: string): Promise<HrOperation[]> {
     this.logger.log(`Finding HR operations for employee: ${employeeId}`);
     return await this.repo.find({
-      where: { employee_id: employeeId, deleted_at: IsNull() },
+      where: { employeeId: employeeId, deletedAt: IsNull() },
       relations: ['employee', 'department', 'position'],
-      order: { operation_date: 'DESC' },
+      order: { operationDate: 'DESC' },
     });
   }
 
@@ -49,7 +49,7 @@ export class HrOperationsService {
   async findOne(id: number): Promise<HrOperation> {
     this.logger.log(`Finding HR operation by id: ${id}`);
     const operation = await this.repo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { id, deletedAt: IsNull() },
       relations: ['employee', 'department', 'position'],
     });
     if (!operation) {
@@ -70,12 +70,12 @@ export class HrOperationsService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Soft deleting HR operation: ${id}`);
     await this.findOne(id);
-    await this.repo.update(id, { deleted_at: new Date() });
+    await this.repo.update(id, { deletedAt: new Date() });
   }
 
   // Восстановление операции
   async restore(id: number): Promise<void> {
     this.logger.log(`Restoring HR operation: ${id}`);
-    await this.repo.update(id, { deleted_at: null });
+    await this.repo.update(id, { deletedAt: null });
   }
 }

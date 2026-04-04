@@ -20,7 +20,7 @@ export class EmployeesService {
 
   // Создание нового сотрудника
   async create(dto: CreateEmployeeDto): Promise<Employee> {
-    this.logger.log(`Creating employee: ${dto.surname} ${dto.first_name}`);
+    this.logger.log(`Creating employee: ${dto.surname} ${dto.firstName}`);
     const employee = this.repo.create(dto);
     return await this.repo.save(employee);
   }
@@ -29,8 +29,8 @@ export class EmployeesService {
   async findAll(): Promise<Employee[]> {
     this.logger.log('Finding all employees');
     return await this.repo.find({
-      where: { deleted_at: IsNull() },
-      order: { surname: 'ASC', first_name: 'ASC' },
+      where: { deletedAt: IsNull() },
+      order: { surname: 'ASC', firstName: 'ASC' },
     });
   }
 
@@ -38,7 +38,7 @@ export class EmployeesService {
   async findOne(id: string): Promise<Employee> {
     this.logger.log(`Finding employee by id: ${id}`);
     const employee = await this.repo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { id, deletedAt: IsNull() },
       relations: ['passport', 'address', 'files', 'operations'],
     });
     if (!employee) {
@@ -51,7 +51,7 @@ export class EmployeesService {
   async update(id: string, dto: UpdateEmployeeDto): Promise<Employee> {
     this.logger.log(`Updating employee: ${id}`);
     await this.findOne(id); // проверка на существование
-    await this.repo.update(id, { ...dto, updated_at: new Date() });
+    await this.repo.update(id, { ...dto, updatedAt: new Date() });
     return await this.findOne(id);
   }
 
@@ -59,12 +59,12 @@ export class EmployeesService {
   async remove(id: string): Promise<void> {
     this.logger.log(`Soft deleting employee: ${id}`);
     await this.findOne(id); // проверка на существование
-    await this.repo.update(id, { deleted_at: new Date() });
+    await this.repo.update(id, { deletedAt: new Date() });
   }
 
   // Восстановление сотрудника
   async restore(id: string): Promise<void> {
     this.logger.log(`Restoring employee: ${id}`);
-    await this.repo.update(id, { deleted_at: null });
+    await this.repo.update(id, { deletedAt: null });
   }
 }

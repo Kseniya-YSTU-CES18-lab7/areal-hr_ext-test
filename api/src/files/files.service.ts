@@ -20,7 +20,7 @@ export class FilesService {
 
   // Создание записи о файле
   async create(dto: CreateFileDto): Promise<File> {
-    this.logger.log(`Creating file for employee: ${dto.employee_id}`);
+    this.logger.log(`Creating file for employee: ${dto.employeeId}`);
     const file = this.repo.create(dto);
     return await this.repo.save(file);
   }
@@ -29,7 +29,7 @@ export class FilesService {
   async findAll(): Promise<File[]> {
     this.logger.log('Finding all files');
     return await this.repo.find({
-      where: { deleted_at: IsNull() },
+      where: { deletedAt: IsNull() },
       relations: ['employee'],
     });
   }
@@ -38,7 +38,7 @@ export class FilesService {
   async findByEmployeeId(employeeId: string): Promise<File[]> {
     this.logger.log(`Finding files for employee: ${employeeId}`);
     return await this.repo.find({
-      where: { employee_id: employeeId, deleted_at: IsNull() },
+      where: { employeeId: employeeId, deletedAt: IsNull() },
       relations: ['employee'],
     });
   }
@@ -47,7 +47,7 @@ export class FilesService {
   async findOne(id: number): Promise<File> {
     this.logger.log(`Finding file by id: ${id}`);
     const file = await this.repo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { id, deletedAt: IsNull() },
       relations: ['employee'],
     });
     if (!file) {
@@ -68,12 +68,12 @@ export class FilesService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Soft deleting file: ${id}`);
     await this.findOne(id);
-    await this.repo.update(id, { deleted_at: new Date() });
+    await this.repo.update(id, { deletedAt: new Date() });
   }
 
   // Восстановление файла
   async restore(id: number): Promise<void> {
     this.logger.log(`Restoring file: ${id}`);
-    await this.repo.update(id, { deleted_at: null });
+    await this.repo.update(id, { deletedAt: null });
   }
 }

@@ -8,7 +8,7 @@ export class CreateHistoryDto {
   // ID пользователя, который сделал изменение (обязательное поле, UUID)
   @IsUUID('4', { message: 'user_id должен быть корректным UUID' })
   @IsNotEmpty({ message: 'user_id не может быть пустым' })
-  user_id: string;
+  userId: string;
 
   // Тип изменённой сущности (только из списка)
   @IsString({ message: 'Тип сущности должен быть строкой' })
@@ -16,28 +16,28 @@ export class CreateHistoryDto {
   @IsIn(['Organization', 'Department', 'Position', 'Employee', 'HROperation'], {
     message: 'Тип сущности должен быть: Organization, Department, Position, Employee или HROperation'
   })
-  entity_type: string;
+  entityType: string;
 
   // ID изменённой записи (TEXT для поддержки UUID и SERIAL)
   @IsString({ message: 'ID сущности должен быть строкой' })
   @IsNotEmpty({ message: 'ID сущности не может быть пустым' })
-  entity_id: string;
+  entityId: string;
 
   // Название изменённого поля
   @IsString({ message: 'Имя поля должно быть строкой' })
   @IsNotEmpty({ message: 'Имя поля не может быть пустым' })
   @MaxLength(100, { message: 'Имя поля не может превышать 100 символов' })
-  field_name: string;
+  fieldName: string;
 
   // Старое значение (NULL при создании записи)
   @IsOptional()
   @IsString({ message: 'Старое значение должно быть строкой' })
-  old_value?: string;
+  oldValue?: string;
 
   // Новое значение (NULL при удалении записи)
   @IsOptional()
   @IsString({ message: 'Новое значение должно быть строкой' })
-  new_value?: string;
+  newValue?: string;
 
   // Тип операции (только из списка)
   @IsString({ message: 'Тип операции должен быть строкой' })
@@ -45,5 +45,5 @@ export class CreateHistoryDto {
   @IsIn(['create', 'update', 'delete'], {
     message: 'Тип операции должен быть: create, update или delete'
   })
-  operation_type: string;
+  operationType: string;
 }

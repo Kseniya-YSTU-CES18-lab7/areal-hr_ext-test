@@ -19,7 +19,7 @@ export class HistoryService {
 
   // Создание записи в истории
   async create(dto: CreateHistoryDto): Promise<History> {
-    this.logger.log(`Creating history record: ${dto.operation_type} for ${dto.entity_type}`);
+    this.logger.log(`Creating history record: ${dto.operationType} for ${dto.entityType}`);
     const history = this.repo.create(dto);
     return await this.repo.save(history);
   }
@@ -28,7 +28,7 @@ export class HistoryService {
   async findAll(): Promise<History[]> {
     this.logger.log('Finding all history records');
     return await this.repo.find({
-      order: { created_at: 'DESC' },
+      order: { createdAt: 'DESC' },
       take: 100,
     });
   }
@@ -37,8 +37,8 @@ export class HistoryService {
   async findByEntity(entityType: string, entityId: string): Promise<History[]> {
     this.logger.log(`Finding history for ${entityType}: ${entityId}`);
     return await this.repo.find({
-      where: { entity_type: entityType, entity_id: entityId },
-      order: { created_at: 'DESC' },
+      where: { entityType: entityType, entityId: entityId },
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -46,8 +46,8 @@ export class HistoryService {
   async findByUserId(userId: string): Promise<History[]> {
     this.logger.log(`Finding history for user: ${userId}`);
     return await this.repo.find({
-      where: { user_id: userId },
-      order: { created_at: 'DESC' },
+      where: { userId: userId },
+      order: { createdAt: 'DESC' },
     });
   }
 

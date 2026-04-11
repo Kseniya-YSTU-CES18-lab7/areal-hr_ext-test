@@ -6,7 +6,9 @@ import {
   Patch, 
   Param, 
   Delete, 
-  ParseUUIDPipe, 
+  Query,
+  ParseUUIDPipe,
+  ParseIntPipe, 
   HttpCode, 
   HttpStatus, 
   Logger 
@@ -33,12 +35,23 @@ export class EmployeesController {
     return await this.service.create(dto);
   }
 
-  // Получение списка всех сотрудников
+// Получение списка всех сотрудников с фильтрацией
   @Get()
-  async findAll() {
-    this.logger.log('GET /employees - find all request');
-    return await this.service.findAll();
+  async findAll(
+    @Query('surname') surname?: string,
+    @Query('firstName') firstName?: string,
+    @Query('departmentId') departmentId?: string,
+  ) {
+    this.logger.log(`GET /employees - find all with filters: surname=${surname}, firstName=${firstName}, departmentId=${departmentId}`);
+    return await this.service.findAll({ surname, firstName, departmentId: departmentId ? +departmentId : undefined });
   }
+
+  // Получение уволенных сотрудников
+  @Get('fired')
+  async findFired() {
+  this.logger.log('GET /employees/fired - find fired employees');
+  return await this.service.findFired();
+}
 
   // Получение сотрудника по ID (UUID)
   @Get(':id')
@@ -46,6 +59,13 @@ export class EmployeesController {
     this.logger.log(`GET /employees/${id} - find one request`);
     return await this.service.findOne(id);
   }
+
+// Получение сотрудников по отделу
+@Get('by-department/:departmentId')
+async findByDepartment(@Param('departmentId', ParseIntPipe) departmentId: number) {
+  this.logger.log(`GET /employees/by-department/${departmentId} - find by department`);
+  return await this.service.findAll({ departmentId });
+}
 
   // Обновление сотрудника
   @Patch(':id')

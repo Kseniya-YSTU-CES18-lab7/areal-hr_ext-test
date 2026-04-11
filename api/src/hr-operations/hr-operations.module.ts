@@ -3,13 +3,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HrOperationsController } from './hr-operations.controller';
 import { HrOperationsService } from './hr-operations.service';
 import { HrOperation } from './entities/hr-operation.entity';
+import { HistoryModule } from '../history/history.module';
 
 /**
  * Модуль кадровых операций (HrOperations)
  * Типы операций: hire, change_salary, change_department, dismissal
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([HrOperation])],
+  imports: [TypeOrmModule.forFeature([HrOperation]), HistoryModule,],
   controllers: [HrOperationsController],
   providers: [HrOperationsService],
   exports: [HrOperationsService],

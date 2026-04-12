@@ -158,7 +158,7 @@ npm run start:dev
 # Открыть api/http/organizations.http в VS Code → "Send Request"
 ```
 
-# ИСПРАВЛЕНИЯ ПО 2-Й НЕДЕЛЕ:
+# ИСПРАВЛЕНИЯ ПО 2-Й НЕДЕЛИ:
 1. Два инструмента миграций - Оставлен только `node-pg-migrate`, удалён конфиг миграций TypeORM
 2. Захардкоженные креды вынесены в `.env`, добавлен `.env.example`, пароли убраны из кода
 3. UNIQUE + soft delete конфликт - Частичный уникальный индекс: `WHERE deleted_at IS NULL`
@@ -207,4 +207,65 @@ cd api && npm run migration:up
 npm run start:dev
 
 # 4. Тестировать: открыть week3-tests.http → Send Request
+```
+
+
+# ИСПРАВЛЕНИЯ ПО 3-Й НЕДЕЛЕ:
+
+1. update() теперь проверяет deletedAt перед изменением
+2. HistoryService добавлен в EmployeesService (авто-логирование)
+3. GET /employees принимает ?surname= и ?firstName=
+4. Добавлен GET /employees/fired для списка уволенных
+Использовала в том числе это:
+NestJS TypeORM: https://docs.nestjs.com/techniques/database
+NestJS Query Parameters: https://docs.nestjs.com/controllers#query-parameters
+
+# Задание 4-й недели: Фронтенд (частично)
+
+# Что сделала:
+1. Создала проект (Vue 3, Quasar, Vite, TypeScript)
+2. Настроила интеграцию с бэкендом (axios, CORS)
+3. Цветовая схема (пока не совсем лаконичная)
+4. Настроила маршрутизацию
+
+# Сделаные Страницы:
+
+1. `LoginPage.vue` — форма входа с валидацией полей
+2. `OrganizationsPage.vue` — список организаций (таблица), создание, редактирование,удаление, поиск
+3. `DepartmentsPage.vue` — дерево отделов (QTree), вложенная структура, редактирование, удаление, поиск
+4. `PositionsPage.vue` — список должностей (таблица), создание с проверкой уникальности, редактирование, удаление, поиск
+
+# Что работает:
+
+1. Валидация форм (обязательные поля, мин. длина, уникальность)
+2. Поиск в реальном времени
+3. Мягкое удаление (запись скрывается из интерфейса)
+4. Уведомления об успехах/ошибках
+5. Адаптивный интерфейс (Quasar components)
+
+# Что использовала
+1. https://quasar.dev/start/vite-plugin/
+2. https://vite.dev/config/?spm=a2ty_o01.29997173.0.0.68b755fbxJoIfD
+3. https://docs.nestjs.com/?spm=a2ty_o01.29997173.0.0.68b755fbxJoIfD
+4. https://docs.nestjs.com/controllers?spm=a2ty_o01.29997173.0.0.68b75171TQAFo5#request-mapping
+5. https://vuejs.org/guide/introduction.html + другие разделы этих сайтов и т.д
+
+
+# Запуск
+
+```bash
+# Запустить базу данных
+docker-compose up -d db
+
+# Применить миграции
+cd api && npm run migration:up
+
+# Запустить бэкенд (в первом терминале)
+cd api && npm run start:dev
+
+# Запустить фронтенд (во втором терминале)
+cd frontend && npm run dev
+
+# Открыть в браузере и протестировать
+# http://localhost:9000/
 ```

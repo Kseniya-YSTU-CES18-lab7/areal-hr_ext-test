@@ -15,6 +15,7 @@ import {
 import { PassportsService } from './passports.service';
 import { CreatePassportDto } from './dto/create-passport.dto';
 import { UpdatePassportDto } from './dto/update-passport.dto';
+import { PassportResponseDto } from './dto/passport.response.dto';  
 
 /**
  * Контроллер для управления паспортными данными
@@ -29,43 +30,43 @@ export class PassportsController {
   // Создание паспорта
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreatePassportDto) {
+  async create(@Body() dto: CreatePassportDto): Promise<PassportResponseDto> {
     this.logger.log('POST /passports - create request');
-    return await this.service.create(dto);
+    return (await this.service.create(dto)) as any;
   }
 
   // Получение всех паспортов
   @Get()
-  async findAll() {
+  async findAll(): Promise<PassportResponseDto[]> {
     this.logger.log('GET /passports - find all request');
-    return await this.service.findAll();
+    return (await this.service.findAll()) as any;
   }
 
   // Получение паспорта по ID сотрудника
   @Get('by-employee/:employeeId')
-  async findByEmployeeId(@Param('employeeId') employeeId: string) {
+  async findByEmployeeId(@Param('employeeId') employeeId: string): Promise<PassportResponseDto> {
     this.logger.log(`GET /passports/by-employee/${employeeId} - find by employee request`);
-    return await this.service.findByEmployeeId(employeeId);
+    return (await this.service.findByEmployeeId(employeeId)) as any;
   }
 
   // Получение паспорта по ID
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<PassportResponseDto> {
     this.logger.log(`GET /passports/${id} - find one request`);
-    return await this.service.findOne(id);
+    return (await this.service.findOne(id)) as any;
   }
 
   // Обновление паспорта
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePassportDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePassportDto): Promise<PassportResponseDto> {
     this.logger.log(`PATCH /passports/${id} - update request`);
-    return await this.service.update(id, dto);
+    return (await this.service.update(id, dto)) as any;
   }
 
   // Мягкое удаление паспорта
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`DELETE /passports/${id} - remove request`);
     return await this.service.remove(id);
   }
@@ -73,7 +74,7 @@ export class PassportsController {
   // Восстановление паспорта
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)
-  async restore(@Param('id', ParseIntPipe) id: number) {
+  async restore(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`POST /passports/${id}/restore - restore request`);
     return await this.service.restore(id);
   }

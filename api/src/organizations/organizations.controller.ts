@@ -9,11 +9,15 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-  Logger  
+  Logger,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+  Query
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { OrganizationResponseDto } from './dto/organization.response.dto';
 
 /**
  * Контроллер для обработки HTTP-запросов к организациям
@@ -29,35 +33,37 @@ export class OrganizationsController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateOrganizationDto) {
-    try {
-      this.logger.log('! [CONTROLLER] POST /organizations вызван!');
-      this.logger.log(`Поиск [Controller] Creating: ${JSON.stringify(dto)}`);
-      
-      const result = await this.service.create(dto);
-      
-      this.logger.log(`+ [Controller] Created: ${JSON.stringify(result)}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`- [Controller] Error: ${error.message}`);
-      throw error;
-    }
+  @UseInterceptors(ClassSerializerInterceptor)
+  async create(@Body() dto: CreateOrganizationDto): Promise<OrganizationResponseDto> {
+    this.logger.log(`POST /organizations - create request: ${dto.name}`);
+    const result = await this.service.create(dto);
+    this.logger.log(`Organization created: ${result.id}`);
+    return result;
   }
 
   /**
    * Получить список всех активных организаций
    */
   @Get()
-  async findAll() {
-    this.logger.log('GET /organizations - find all request');
-    return await this.service.findAll();
+  @UseInterceptors(ClassSerializerInterceptor)
+  async findAll(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ): Promise<{ data: OrganizationResponseDto[]; total: number; page: number; limit: number }> {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    this.logger.log(`GET /organizations - find all request: page=${pageNum}, limit=${limitNum}, search=${search}`);
+    const result = await this.service.findAll(search, pageNum, limitNum);
+    return result as any;
   }
 
   /**
    * Найти организацию по ID
    */
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  @UseInterceptors(ClassSerializerInterceptor)
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<OrganizationResponseDto> {
     this.logger.log(`GET /organizations/${id} - find one request`);
     return await this.service.findOne(id);
   }
@@ -66,7 +72,8 @@ export class OrganizationsController {
    * Обновить организацию
    */
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrganizationDto) {
+  @UseInterceptors(ClassSerializerInterceptor)
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrganizationDto): Promise<OrganizationResponseDto> {
     this.logger.log(`PATCH /organizations/${id} - update request`);
     return await this.service.update(id, dto);
   }
@@ -76,7 +83,7 @@ export class OrganizationsController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`DELETE /organizations/${id} - remove request`);
     return await this.service.remove(id);
   }
@@ -86,7 +93,7 @@ export class OrganizationsController {
    */
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)
-  async restore(@Param('id', ParseIntPipe) id: number) {
+  async restore(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`POST /organizations/${id}/restore - restore request`);
     return await this.service.restore(id);
   }

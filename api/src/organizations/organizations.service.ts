@@ -1,62 +1,104 @@
+// FILE: src/organizations/organizations.service.ts
 import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Like } from 'typeorm';
 import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { HistoryService } from '../history/history.service';
 
 /**
- * Сервис для работы с организациями (реализует CRUD-операции с поддержкой мягкого удаления)
+ * Сервис для работы с организациями (CRUD + мягкое удаление + история изменений)
  */
 @Injectable()
 export class OrganizationsService {
-  private readonly logger = new Logger(OrganizationsService.name);  // ← добавить
+  private readonly logger = new Logger(OrganizationsService.name);
 
   constructor(
     @InjectRepository(Organization)
     private readonly repo: Repository<Organization>,
+    private readonly historyService: HistoryService,
   ) {}
+
+  // Метод для записи в историю
+  private async logChange(
+    organizationId: number,
+    fieldName: string,
+    oldValue: any,
+    newValue: any,
+    operationType: 'create' | 'update' | 'delete',
+    userId: string = 'system',
+  ) {
+    try {
+      await this.historyService.create({
+        userId,
+        entityType: 'Organization',
+        entityId: organizationId.toString(),
+        fieldName,
+        oldValue: oldValue?.toString() ?? null,
+        newValue: newValue?.toString() ?? null,
+        operationType,
+      });
+    } catch (err: any) {
+      this.logger.warn(`Failed to log history: ${err.message}`);
+    }
+  }
 
   /**
    * Создать новую организацию
    */
   async create(dto: CreateOrganizationDto): Promise<Organization> {
-    // Вместо console.log
-    this.logger.log(`Поиск [DEBUG] create() вызван с: ${JSON.stringify(dto)}`);
-    
-    try {
-      const existing = await this.repo.findOne({
-        where: { name: dto.name, deleted_at: IsNull() }
-      });
-      
-            this.logger.log(`Поиск [DEBUG] existing: ${existing}`);
-      
-      if (existing) {
-            this.logger.warn(`! [DEBUG] Дубликат!`);
-        throw new ConflictException(`Организация "${dto.name}" уже существует`);
-      }
+    const existing = await this.repo.findOne({
+      where: { name: dto.name, deletedAt: IsNull() },
+    });
 
-      const organization = this.repo.create(dto);
-      this.logger.log(`Поиск [DEBUG] Перед save(): ${organization}`);
-      
-      const saved = await this.repo.save(organization);
-      this.logger.log(`+ [DEBUG] После save(): ${saved}`);
-      
-      return saved;
-    } catch (error) {
-      this.logger.error(`- [DEBUG] Ошибка в create(): ${error.message}`);
-      throw error;
+    if (existing) {
+      throw new ConflictException(`Организация "${dto.name}" уже существует`);
     }
+
+    const organization = this.repo.create(dto);
+    const saved = await this.repo.save(organization);
+
+    // Логирование создания (без DEBUG)
+    this.logger.log(`Organization created: ${saved.id} - ${saved.name}`);
+
+    // История изменений
+    await this.logChange(saved.id, 'organization', null, saved, 'create');
+
+    return saved;
   }
 
   /**
-   * Получить все активные организации
+   * Получить все активные организации (с поиском и пагинацией)
    */
-  async findAll(): Promise<Organization[]> {
-    return await this.repo.find({
-      where: { deleted_at: IsNull() },
-      order: { name: 'ASC' }
+  async findAll(
+    search?: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ data: Organization[]; total: number; page: number; limit: number }> {
+    this.logger.log(`Finding organizations: page=${page}, limit=${limit}, search=${search}`);
+    const where: any = { deletedAt: IsNull() };
+
+    // Поиск через ILike
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+
+    const total = await this.repo.count({ where });
+
+    const data = await this.repo.find({
+      where,
+      order: { name: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
   }
 
   /**
@@ -64,13 +106,11 @@ export class OrganizationsService {
    */
   async findOne(id: number): Promise<Organization> {
     const organization = await this.repo.findOne({
-      where: { id, deleted_at: IsNull() }
+      where: { id, deletedAt: IsNull() },
     });
-
     if (!organization) {
       throw new NotFoundException(`Организация с id ${id} не найдена`);
     }
-
     return organization;
   }
 
@@ -78,43 +118,45 @@ export class OrganizationsService {
    * Обновить организацию
    */
   async update(id: number, dto: UpdateOrganizationDto): Promise<Organization> {
-    // Сначала проверяем, что организация существует и не удалена
     const organization = await this.findOne(id);
 
-    // Если меняем название, то проверяем на дубликат
+    // Логирование изменений по каждому полю
     if (dto.name && dto.name !== organization.name) {
-      const existing = await this.repo.findOne({
-        where: { name: dto.name, deleted_at: IsNull() }
-      });
-      if (existing) {
-        throw new ConflictException(`Организация "${dto.name}" уже существует`);
-      }
+      await this.logChange(id, 'name', organization.name, dto.name, 'update');
+    }
+    if (dto.comment !== undefined && dto.comment !== organization.comment) {
+      await this.logChange(id, 'comment', organization.comment, dto.comment, 'update');
     }
 
-    // Обновляем запись
-    await this.repo.update(id, { 
-      ...dto, 
-      updated_at: new Date() 
+    await this.repo.update(id, {
+      ...dto,
+      updatedAt: new Date(),
     });
+
+    this.logger.log(`Organization updated: ${id}`);
 
     return this.findOne(id);
   }
 
   /**
-   * Пометить организацию как удалённую (мягкое удаление)
+   * Мягкое удаление организации
    */
   async remove(id: number): Promise<void> {
-    const organization = await this.findOne(id); // проверка, что не удалена
-    
-    await this.repo.update(id, { 
-      deleted_at: new Date() 
-    });
+    const organization = await this.findOne(id);
+
+    // Логирование удаления
+    await this.logChange(id, 'deletedAt', null, new Date(), 'delete');
+
+    await this.repo.update(id, { deletedAt: new Date() });
+
+    this.logger.log(`Organization soft deleted: ${id}`);
   }
 
   /**
-   * Восстановить удалённую организацию (понадобиться для администратора)
+   * Восстановить удалённую организацию
    */
   async restore(id: number): Promise<void> {
-    await this.repo.update(id, { deleted_at: null });
+    await this.repo.update(id, { deletedAt: null });
+    this.logger.log(`Organization restored: ${id}`);
   }
 }

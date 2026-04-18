@@ -8,9 +8,10 @@ export const up = (pgm) => {
   pgm.createTable('history', {
     id: { type: 'serial', primaryKey: true },
     // Внешний ключ для связи с пользователем (кто конкретно сделал изменение)
-user_id: { 
-  type: 'uuid', 
-  notNull: true 
+user_id: {
+  type: 'varchar',  
+  length: 255,
+  notNull: true, 
   // FK добавим позже, когда создадим таблицу users (план 5-6 неделя)
 },
     // Тип изменённой сущности (полиморфная связь)

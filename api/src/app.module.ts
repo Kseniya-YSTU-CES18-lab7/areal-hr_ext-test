@@ -50,5 +50,6 @@ import { HistoryModule } from './history/history.module';
   ],
   controllers: [AppController],
   providers: [AppService],
+  exports: [TypeOrmModule],
 })
 export class AppModule {}

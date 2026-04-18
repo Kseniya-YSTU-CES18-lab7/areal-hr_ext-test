@@ -2,38 +2,43 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 
 /**
  * Сущность «Должность», таблица positions в БД
+ * camelCase в коде, snake_case в БД через @Column({ name: '...' })
  */
 @Entity('positions')
 export class Position {
   @PrimaryGeneratedColumn({ comment: 'Уникальный идентификатор должности' })
-  id: number;
+  id!: number;
 
   @Column({ 
     type: 'varchar', 
     length: 255, 
     nullable: false, 
     unique: true,
-    comment: 'Название должности (уникальное)'
+    comment: 'Название должности (уникальное)',
+    name: 'name'  // опционально, для единообразия
   })
-  name: string;
+  name!: string;
 
-  @CreateDateColumn({ 
+  @CreateDateColumn({
     type: 'timestamp',
-    comment: 'Дата и время создания записи'
+    comment: 'Дата и время создания записи',
+    name: 'created_at'
   })
-  created_at: Date;
+  createdAt!: Date;
 
-  @UpdateDateColumn({ 
+  @UpdateDateColumn({
     type: 'timestamp',
-    comment: 'Дата и время последнего обновления'
+    comment: 'Дата и время последнего обновления',
+    name: 'updated_at'
   })
-  updated_at: Date;
+  updatedAt!: Date;
 
-  @Column({ 
-    type: 'timestamp', 
-    nullable: true, 
+  @Column({
+    type: 'timestamp',
+    nullable: true,
     default: null,
-    comment: 'Дата мягкого удаления (NULL = запись активна)'
+    comment: 'Дата мягкого удаления (NULL = запись активна)',
+    name: 'deleted_at'
   })
-  deleted_at: Date | null;
+  deletedAt!: Date | null;
 }

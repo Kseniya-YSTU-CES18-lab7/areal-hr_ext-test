@@ -10,11 +10,17 @@ import {
   Query,
   HttpCode, 
   HttpStatus, 
-  Logger 
+  Logger,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from '../config/multer.config';
 import { FilesService } from './files.service';
 import { CreateFileDto } from './dto/create-file.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
+import { FileResponseDto } from './dto/file.response.dto';   
 
 /**
  * Контроллер для управления файлами
@@ -26,46 +32,63 @@ export class FilesController {
 
   constructor(private readonly service: FilesService) {}
 
-  // Создание записи о файле
+  // Загрузка файла + создание записи в БД (multipart/form-data)
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateFileDto) {
-    this.logger.log('POST /files - create request');
-    return await this.service.create(dto);
+  @UseInterceptors(FileInterceptor('file', multerConfig))
+  async create(
+    @Body() dto: CreateFileDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<FileResponseDto> {
+    this.logger.log('POST /files - upload file request');
+
+    if (!file) {
+      throw new BadRequestException('Файл не был загружен. Используйте multipart/form-data с полем "file"');
+    }
+
+    const result = await this.service.createWithFile(dto, file);
+    return result as any;
   }
 
-  // Получение всех файлов
+  // Получение всех файлов (с поиском и пагинацией)
   @Get()
-  async findAll() {
-    this.logger.log('GET /files - find all request');
-    return await this.service.findAll();
+  async findAll(
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ): Promise<{ data: FileResponseDto[]; total: number; page: number; limit: number }> {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    this.logger.log(`GET /files - find all request: page=${pageNum}, limit=${limitNum}, search=${search}`);
+    const result = await this.service.findAll(search, pageNum, limitNum);
+    return result as any;
   }
 
   // Получение всех файлов сотрудника
   @Get('by-employee/:employeeId')
-  async findByEmployeeId(@Param('employeeId') employeeId: string) {
+  async findByEmployeeId(@Param('employeeId') employeeId: string): Promise<FileResponseDto[]> {
     this.logger.log(`GET /files/by-employee/${employeeId} - find by employee request`);
-    return await this.service.findByEmployeeId(employeeId);
+    return (await this.service.findByEmployeeId(employeeId)) as any;
   }
 
   // Получение файла по ID
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<FileResponseDto> {
     this.logger.log(`GET /files/${id} - find one request`);
-    return await this.service.findOne(id);
+    return (await this.service.findOne(id)) as any;
   }
 
   // Обновление информации о файле
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFileDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateFileDto): Promise<FileResponseDto> {
     this.logger.log(`PATCH /files/${id} - update request`);
-    return await this.service.update(id, dto);
+    return (await this.service.update(id, dto)) as any;
   }
 
   // Мягкое удаление файла
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`DELETE /files/${id} - remove request`);
     return await this.service.remove(id);
   }
@@ -73,7 +96,7 @@ export class FilesController {
   // Восстановление файла
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)
-  async restore(@Param('id', ParseIntPipe) id: number) {
+  async restore(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`POST /files/${id}/restore - restore request`);
     return await this.service.restore(id);
   }

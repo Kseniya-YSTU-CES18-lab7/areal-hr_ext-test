@@ -137,3 +137,149 @@ GET http://localhost:3000/history/by-entity?entityType=Employee&entityId=c450fc4
 ### GET Получить историю по пользователю
 # Пока не тестируем — таблица users ещё не создана
 # GET http://localhost:3000/history/by-user/<uuid-пользователя>
+
+### POST Создать сотрудника с паспортом и адресом (ТРАНЗАКЦИЯ)
+POST http://localhost:3000/employees/full
+Content-Type: application/json
+
+{
+  "surname": "Иванов",
+  "firstName": "Иван",
+  "patronymic": "Иванович",
+  "birthDate": "1990-07-12",
+  "passport": {
+    "series": "4500",
+    "number": "123456",
+    "issueDate": "2020-01-15",
+    "departmentCode": "123-456",
+    "issuedBy": "УФМС России по г. Ярославль"
+  },
+  "address": {
+    "region": "г. Ярославль",
+    "locality": "Ярославль",
+    "street": "ул. Калинина",
+    "house": "1",
+    "building": "1",
+    "apartment": "1"
+  }
+}
+
+### POST Создать сотрудника 1
+POST http://localhost:3000/employees
+Content-Type: application/json
+
+{
+  "surname": "Смирнов",
+  "firstName": "Иван",
+  "patronymic": "Иванович",
+  "birthDate": "1990-05-15"
+}
+
+### POST Создать сотрудника 2
+POST http://localhost:3000/employees
+Content-Type: application/json
+
+{
+  "surname": "Иванова",
+  "firstName": "Мария",
+  "patronymic": "Петровна",
+  "birthDate": "1992-08-20"
+}
+
+### POST Создать сотрудника 3
+POST http://localhost:3000/employees
+Content-Type: application/json
+
+{
+  "surname": "Петров",
+  "firstName": "Пётр",
+  "patronymic": "Сергеевич",
+  "birthDate": "1988-03-10"
+}
+
+### GET Поиск по фамилии "Иван" (должен найти "Иванов" и "Иванова")
+GET http://localhost:3000/employees?surname=Иван
+
+### GET Поиск по имени "Мар" (должен найти "Мария")
+GET http://localhost:3000/employees?firstName=Мар
+
+### POST Создать организацию 1
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО Ромашка",
+  "comment": "Тест"
+}
+
+### POST Создать организацию 2
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "АО Ромашка-Плюс",
+  "comment": "Тест 2"
+}
+
+### GET Поиск по "Ромаш" (должен найти обе организации)
+GET http://localhost:3000/organizations?search=Ромаш
+
+### POST Создать должность 1
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "Менеджер по продажам"
+}
+
+### POST Создать должность 2
+POST http://localhost:3000/positions
+Content-Type: application/json
+
+{
+  "name": "Старший менеджер"
+}
+
+### GET Поиск по "менеджер" (должен найти обе должности)
+GET http://localhost:3000/positions?search=менеджер
+
+### GET Организации (страница 1, 10 записей)
+GET http://localhost:3000/organizations?page=1&limit=10
+
+### GET Должности (поиск "менеджер", страница 2, 5 записей) GET http://localhost:3000/positions?search=менеджер&page=2&limit=5
+
+### GET Сотрудники (фильтр по фамилии, страница 1, 20 записей)
+GET http://localhost:3000/employees?surname=Иванов&page=1&limit=20
+
+### GET История (страница 1, 50 записей)
+GET http://localhost:3000/history?page=1&limit=50
+
+### POST Создать сотрудника для теста
+POST http://localhost:3000/employees
+Content-Type: application/json
+
+{
+  "surname": "АндрееВ",
+  "firstName": "Андрей",
+  "patronymic": "Андреевич",
+  "birthDate": "1990-01-01"
+}
+
+### POST Загрузить файл (multipart/form-data)
+POST http://localhost:3000/files
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="employeeId"
+
+c450fc4d-48bc-4734-a15f-22c50156405b
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="title"
+
+Паспорт страница 1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test-passport.jpg"
+Content-Type: image/jpeg
+
+< C:\Users\Ксения\Desktop\test-passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--

@@ -10,42 +10,42 @@ import { HrOperation } from '../../hr-operations/entities/hr-operation.entity';
 @Entity('employees')
 export class Employee {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ type: 'varchar', length: 100, nullable: false, name: 'surname' })
-  surname: string;
+  surname!: string;
 
   @Column({ type: 'varchar', length: 100, nullable: false, name: 'first_name' })
-  firstName: string;
+  firstName!: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'patronymic' })
-  patronymic: string | null;
+  patronymic!: string | null;
 
   @Column({ type: 'date', nullable: true, name: 'birth_date' })
-  birthDate: Date | null;
+  birthDate!: Date | null;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 
   @Column({ type: 'timestamp', nullable: true, default: null, name: 'deleted_at' })
-  deletedAt: Date | null;
+  deletedAt!: Date | null;
 
   // Связь 1:1 с паспортом (FK находится в Passport, поэтому @JoinColumn здесь не нужен)
   @OneToOne(() => Passport, (passport) => passport.employee, { cascade: true })
-  passport: Passport;
+  passport!: Passport;
 
   // Связь 1:1 с адресом (FK находится в Address, поэтому @JoinColumn здесь не нужен)
   @OneToOne(() => Address, (address) => address.employee, { cascade: true })
-  address: Address;
+  address!: Address;
 
   // Связь 1:N с файлами
   @OneToMany(() => File, (file) => file.employee)
-  files: File[];
+  files!: File[];
 
   // Связь 1:N с кадровыми операциями
   @OneToMany(() => HrOperation, (op) => op.employee)
-  operations: HrOperation[];
+  operations!: HrOperation[];
 }

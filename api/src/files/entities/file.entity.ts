@@ -8,38 +8,38 @@ import { Employee } from '../../employees/entities/employee.entity';
 @Entity('files')
 export class File {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   // Внешний ключ для связи с сотрудником
   @Column({ type: 'uuid', nullable: false, name: 'employee_id' })
-  employeeId: string;
+  employeeId!: string;
 
   // Связь с сотрудником (при удалении сотрудника удаляются и его файлы)
   @ManyToOne(() => Employee, (employee) => employee.files, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'employee_id' })
-  employee: Employee;
+  employee!: Employee;
 
   // Оригинальное имя файла (обязательное поле)
   @Column({ type: 'varchar', length: 255, nullable: false, name: 'title' })
-  title: string;
+  title!: string;
 
   // Путь к файлу на сервере (обязательное поле)
   @Column({ type: 'varchar', length: 500, nullable: false, name: 'file_path' })
-  filePath: string;
+  filePath!: string;
 
   // MIME-тип файла (например, image/jpeg) — необязательное поле
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'mime_type' })
-  mimeType: string | null;
+  mimeType!: string | null;
 
   // Размер файла в байтах — необязательное поле
   @Column({ type: 'bigint', nullable: true, name: 'size_bytes' })
-  sizeBytes: number | null;
+  sizeBytes!: number | null;
 
   // Дата и время загрузки файла
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   // Дата мягкого удаления (NULL = запись активна)
   @Column({ type: 'timestamp', nullable: true, default: null, name: 'deleted_at' })
-  deletedAt: Date | null;
+  deletedAt!: Date | null;
 }

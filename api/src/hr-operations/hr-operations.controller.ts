@@ -15,6 +15,7 @@ import {
 import { HrOperationsService } from './hr-operations.service';
 import { CreateHrOperationDto } from './dto/create-hr-operation.dto';
 import { UpdateHrOperationDto } from './dto/update-hr-operation.dto';
+import { HrOperationResponseDto } from './dto/hr-operation.response.dto';   
 
 /**
  * Контроллер для управления кадровыми операциями
@@ -29,43 +30,43 @@ export class HrOperationsController {
   // Создание кадровой операции
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateHrOperationDto) {
+  async create(@Body() dto: CreateHrOperationDto): Promise<HrOperationResponseDto> {
     this.logger.log('POST /hr-operations - create request');
-    return await this.service.create(dto);
+    return (await this.service.create(dto)) as any;
   }
 
   // Получение всех операций
   @Get()
-  async findAll() {
+  async findAll(): Promise<HrOperationResponseDto[]> {
     this.logger.log('GET /hr-operations - find all request');
-    return await this.service.findAll();
+    return (await this.service.findAll()) as any;
   }
 
   // Получение всех операций сотрудника
   @Get('by-employee/:employeeId')
-  async findByEmployeeId(@Param('employeeId') employeeId: string) {
+  async findByEmployeeId(@Param('employeeId') employeeId: string): Promise<HrOperationResponseDto[]> {
     this.logger.log(`GET /hr-operations/by-employee/${employeeId} - find by employee request`);
-    return await this.service.findByEmployeeId(employeeId);
+    return (await this.service.findByEmployeeId(employeeId)) as any;
   }
 
   // Получение операции по ID
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<HrOperationResponseDto> {
     this.logger.log(`GET /hr-operations/${id} - find one request`);
-    return await this.service.findOne(id);
+    return (await this.service.findOne(id)) as any;
   }
 
   // Обновление операции
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHrOperationDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateHrOperationDto): Promise<HrOperationResponseDto> {
     this.logger.log(`PATCH /hr-operations/${id} - update request`);
-    return await this.service.update(id, dto);
+    return (await this.service.update(id, dto)) as any;
   }
 
   // Мягкое удаление операции
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`DELETE /hr-operations/${id} - remove request`);
     return await this.service.remove(id);
   }
@@ -73,7 +74,7 @@ export class HrOperationsController {
   // Восстановление операции
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)
-  async restore(@Param('id', ParseIntPipe) id: number) {
+  async restore(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`POST /hr-operations/${id}/restore - restore request`);
     return await this.service.restore(id);
   }

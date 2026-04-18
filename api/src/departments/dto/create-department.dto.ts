@@ -2,20 +2,20 @@ import { IsString, IsOptional, IsInt, IsPositive, MaxLength, IsNotEmpty } from '
 import { Transform } from 'class-transformer';
 
 export class CreateDepartmentDto {
-  @IsInt({ message: 'organization_id должен быть числом' })
-  @IsPositive({ message: 'organization_id должен быть положительным' })
-  organization_id: number;
+  @IsInt({ message: 'organizationId должен быть числом' })
+  @IsPositive({ message: 'organizationId должен быть положительным' })
+  organizationId!: number;
 
   @IsOptional()
-  @IsInt({ message: 'parent_id должен быть числом' })
-  @IsPositive({ message: 'parent_id должен быть положительным' })
-  parent_id?: number | null;
+  @IsInt({ message: 'parentId должен быть числом' })
+  @IsPositive({ message: 'parentId должен быть положительным' })
+  parentId?: number | null;
 
   @IsString({ message: 'Название должно быть строкой' })
   @IsNotEmpty({ message: 'Название не может быть пустым' })
   @MaxLength(255, { message: 'Название не может превышать 255 символов' })
   @Transform(({ value }) => value?.trim())
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString({ message: 'Комментарий должен быть строкой' })

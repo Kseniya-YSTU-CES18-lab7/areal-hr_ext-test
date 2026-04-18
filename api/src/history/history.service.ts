@@ -25,13 +25,27 @@ export class HistoryService {
   }
 
   // Получение последних 100 записей истории (сортировка от новых к старым)
-  async findAll(): Promise<History[]> {
-    this.logger.log('Finding all history records');
-    return await this.repo.find({
-      order: { createdAt: 'DESC' },
-      take: 100,
-    });
-  }
+  async findAll(
+  page: number = 1,
+  limit: number = 20
+): Promise<{ data: History[]; total: number; page: number; limit: number }> {
+  this.logger.log(`Finding all history with pagination: page=${page}, limit=${limit}`);
+  
+  const total = await this.repo.count();
+  
+  const data = await this.repo.find({
+    order: { createdAt: 'DESC' },
+    skip: (page - 1) * limit,
+    take: limit,
+  });
+  
+  return {
+    data,
+    total,
+    page,
+    limit,
+  };
+}
 
   // Получение истории по типу и ID сущности
   async findByEntity(entityType: string, entityId: string): Promise<History[]> {

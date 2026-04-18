@@ -11,14 +11,14 @@ export class CreateEmployeeDto {
   @IsNotEmpty({ message: 'Фамилия не может быть пустой' })
   @MaxLength(100, { message: 'Фамилия не может превышать 100 символов' })
   @Transform(({ value }) => value?.trim())
-  surname: string;
+  surname!: string;
 
   // Имя (обязательное поле, обрезаем пробелы)
   @IsString({ message: 'Имя должно быть строкой' })
   @IsNotEmpty({ message: 'Имя не может быть пустым' })
   @MaxLength(100, { message: 'Имя не может превышать 100 символов' })
   @Transform(({ value }) => value?.trim())
-  firstName: string;
+  firstName!: string;
 
   // Отчество (необязательное поле)
   @IsOptional()
@@ -32,5 +32,5 @@ export class CreateEmployeeDto {
   @IsDate({ message: 'Дата рождения должна быть корректной датой' })
   @IsNotEmpty({ message: 'Дата рождения не может быть пустой' })
   @Transform(({ value }) => value ? new Date(value) : undefined)
-  birthDate: Date;
+  birthDate!: Date;
 }

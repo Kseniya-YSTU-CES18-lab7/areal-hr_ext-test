@@ -31,32 +31,37 @@ export class EmployeesService {
     @InjectRepository(Address)
     private readonly addressRepo: Repository<Address>,
     private readonly historyService: HistoryService,
-    private readonly dataSource: DataSource,  // 🔥 DataSource для транзакций
+    private readonly dataSource: DataSource,  // DataSource для транзакций
   ) {}
 
-  // Метод для записи в историю
-  private async logChange(
-    employeeId: string,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system',
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'Employee',
-        entityId: employeeId,
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
+    // Метод для записи в историю
+private async logChange(
+  employeeId: string,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = 'system',
+) {
+  try {
+    await this.historyService.create({
+      userId,
+      entityType: 'Employee',
+      entityId: employeeId,
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.debug(`✓ History logged: ${fieldName} for employee ${employeeId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for employee ${employeeId}, field ${fieldName}: ${err.message}`, err.stack);
+    // Можно пробросить ошибку для отладки...
+    if (process.env.NODE_ENV === 'development') {
+      throw err;
     }
   }
+}
 
   /**
    * Создание сотрудника с паспортными данными и адресом в ОДНОЙ транзакции

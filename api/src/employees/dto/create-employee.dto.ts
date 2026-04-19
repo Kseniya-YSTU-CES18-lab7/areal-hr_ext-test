@@ -30,7 +30,6 @@ export class CreateEmployeeDto {
   // Дата рождения (необязательное поле, преобразуем в объект Date)
   @IsOptional()
   @IsDate({ message: 'Дата рождения должна быть корректной датой' })
-  @IsNotEmpty({ message: 'Дата рождения не может быть пустой' })
   @Transform(({ value }) => value ? new Date(value) : undefined)
-  birthDate!: Date;
+  birthDate?: Date;  // ← изменили на опциональное
 }

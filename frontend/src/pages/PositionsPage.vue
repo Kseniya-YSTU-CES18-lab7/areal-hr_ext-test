@@ -27,6 +27,7 @@
           outlined
           dense
           clearable
+          @update:model-value="onSearch"
         >
           <template v-slot:prepend>
             <q-icon name="search" color="primary" />
@@ -38,11 +39,12 @@
     <!-- Таблица должностей -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="filteredPositions"
+        :rows="positions"
         :columns="columns"
         row-key="id"
         :loading="isLoading"
         :pagination="pagination"
+        @update:model-value="onRequestPagination"
         dense
         class="text-dark"
       >
@@ -102,16 +104,15 @@
         </q-card-section>
 
         <q-card-section>
-          <q-form @submit="handleSubmit" class="q-gutter-md">
+          <q-form @submit="handleSubmitOverride" class="q-gutter-md">
             
-            <!-- Поле: Название должности -->
+            <!-- Поле: Название должности (используем nameRules + кастомная проверка) -->
             <q-input
               v-model="form.name"
               label="Название должности *"
               outlined
               :rules="[
-                val => !!val || 'Название обязательно',
-                val => val.length >= 3 || 'Минимум 3 символа',
+                ...nameRules,
                 val => !isDuplicateName(val) || 'Должность с таким названием уже существует'
               ]"
             />
@@ -122,7 +123,7 @@
                 label="Отмена" 
                 color="grey-7" 
                 text-color="white"
-                @click="dialogOpened = false"
+                @click="closeDialog"
               />
               <q-btn 
                 type="submit" 
@@ -147,7 +148,7 @@
 
         <q-card-section>
           <div class="text-dark">
-            Вы действительно хотите удалить должность "{{ positionToDelete?.name }}"?
+            Вы действительно хотите удалить должность "{{ itemToDelete?.name }}"?
             <br><br>
             <span class="text-caption text-grey-7">
               Это мягкое удаление — данные можно будет восстановить.
@@ -179,25 +180,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { api } from 'src/boot/axios'
-import { useQuasar } from 'quasar'
+import { computed, onMounted } from 'vue'
+import { useCrudPage } from 'src/composables/useCrudPage'
+import { positionsService } from 'src/services/positions'
+import type { Position, PositionCreateDto, PositionUpdateDto } from 'src/types/models'
+import { nameRules } from 'src/utils/validationRules'
 
-// Получаем экземпляр Quasar для уведомлений
-const $q = useQuasar()
+// === Используем composable ===
+const {
+  items: positions,
+  isLoading,
+  pagination,
+  loadItems,
+  onRequestPagination,
+  searchQuery,
+  dialogOpened,
+  isEditing,
+  isSubmitting,
+  form,
+  openCreateDialog,
+  openEditDialog,
+  closeDialog,
+  handleSubmit,
+  deleteDialogOpened,
+  itemToDelete,
+  isDeleting,
+  confirmDelete,
+  handleDelete,
+} = useCrudPage<Position, PositionCreateDto, PositionUpdateDto>({
+  service: positionsService,
+  entityName: 'Должность',
+  defaultForm: { name: '' },
+})
 
-// === Состояние таблицы ===
-
-// Колонки таблицы
+// === Колонки таблицы ===
 const columns = [
-  { 
-    name: 'name', 
-    required: true, 
-    label: 'Название должности', 
-    align: 'left',
-    field: 'name',
-    sortable: true 
-  },
+  { name: 'name', required: true, label: 'Название должности', align: 'left', field: 'name', sortable: true },
   { 
     name: 'createdAt', 
     label: 'Создана', 
@@ -214,228 +232,45 @@ const columns = [
     sortable: true,
     format: (val: string) => val ? new Date(val).toLocaleDateString('ru-RU') : '-'
   },
-  { 
-    name: 'actions', 
-    label: 'Действия', 
-    align: 'right',
-    field: 'actions',
-    sortable: false 
-  },
+  { name: 'actions', label: 'Действия', align: 'right', field: 'actions', sortable: false },
 ]
 
-// Данные должностей
-const positions = ref<any[]>([])
+// positions.value уже содержит отфильтрованные данные с бэкенда
+// filteredPositions больше не нужен — используем positions напрямую
 
-// Загрузка данных
-const isLoading = ref(false)
-
-// Пагинация
-const pagination = ref({
-  page: 1,
-  rowsPerPage: 10,
-  rowsNumber: 0
-})
-
-// === Поиск ===
-
-// Поисковый запрос
-const searchQuery = ref('')
-
-// Фильтрованные должности (поиск по названию)
-const filteredPositions = computed(() => {
-  if (!searchQuery.value) return positions.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return positions.value.filter((pos: any) => 
-    pos.name?.toLowerCase().includes(query)
-  )
-})
-
-// === Проверка на дубликат названия ===
-
+// === Проверка на дубликат названия (локальная валидация) ===
 function isDuplicateName(name: string): boolean {
   if (!name) return false
-  
-  return positions.value.some((pos: any) => 
+  return positions.value.some((pos: Position) => 
     pos.name?.toLowerCase() === name.toLowerCase() && 
-    (!isEditing.value || pos.id !== form.value.id) &&
+    (!isEditing.value || (pos.id as number) !== (form.value as any).id) &&
     !pos.deletedAt
   )
 }
 
-// === Диалог создания/редактирования ===
-
-// Открыт ли диалог
-const dialogOpened = ref(false)
-
-// Режим редактирования (true) или создания (false)
-const isEditing = ref(false)
-
-// Загрузка при отправке формы
-const isSubmitting = ref(false)
-
-// Данные формы
-const form = ref({
-  id: null as number | null,
-  name: ''
-})
-
-// Открыть диалог создания
-function openCreateDialog() {
-  isEditing.value = false
-  form.value = { id: null, name: '' }
-  dialogOpened.value = true
-}
-
-// Открыть диалог редактирования
-function openEditDialog(position: any) {
-  isEditing.value = true
-  form.value = {
-    id: position.id,
-    name: position.name
-  }
-  dialogOpened.value = true
-}
-
-// Обработка отправки формы
-async function handleSubmit() {
-  // Проверка на дубликат перед отправкой
-  if (isDuplicateName(form.value.name)) {
-    $q.notify({
-      color: 'negative',
-      message: 'Должность с таким названием уже существует',
-      icon: 'error',
-      position: 'top-right'
-    })
+// === Переопределяем handleSubmit для проверки дубликата ===
+async function handleSubmitOverride() {
+  if (isDuplicateName((form.value as any).name)) {
     return
   }
-  
-  isSubmitting.value = true
-  
-  try {
-    if (isEditing.value) {
-      // Редактирование
-      await api.patch(`/positions/${form.value.id}`, {
-        name: form.value.name
-      })
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Должность обновлена',
-        icon: 'check_circle',
-        position: 'top-right'
-      })
-    } else {
-      // Создание
-      await api.post('/positions', {
-        name: form.value.name
-      })
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Должность создана',
-        icon: 'add_circle',
-        position: 'top-right'
-      })
-    }
-    
-    // Закрыть диалог и обновить список
-    dialogOpened.value = false
-    await loadPositions()
-    
-  } catch (error: any) {
-    // Обработка ошибки (включая 409 Conflict при дубликате)
-    const message = error.response?.status === 409 
-      ? 'Должность с таким названием уже существует' 
-      : error.response?.data?.message || 'Ошибка при сохранении'
-    
-    $q.notify({
-      color: 'negative',
-      message: message,
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isSubmitting.value = false
-  }
+  await handleSubmit()
 }
 
-// === Удаление ===
+// Такой поиск (чтобы не спамить запросами)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
-// Открыт ли диалог удаления
-const deleteDialogOpened = ref(false)
-
-// Должность для удаления
-const positionToDelete = ref<any>(null)
-
-// Загрузка при удалении
-const isDeleting = ref(false)
-
-// Подтвердить удаление
-function confirmDelete(position: any) {
-  positionToDelete.value = position
-  deleteDialogOpened.value = true
+function onSearch() {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  
+  searchTimeout = setTimeout(() => {
+    pagination.value.page = 1
+    loadItems({ search: searchQuery.value || undefined })
+  }, 300)
 }
 
-// Обработка удаления
-async function handleDelete() {
-  if (!positionToDelete.value) return
-  
-  isDeleting.value = true
-  
-  try {
-    // Мягкое удаление
-    await api.delete(`/positions/${positionToDelete.value.id}`)
-    
-    $q.notify({
-      color: 'positive',
-      message: 'Должность удалена',
-      icon: 'delete',
-      position: 'top-right'
-    })
-    
-    // Обновить список
-    await loadPositions()
-    
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: error.response?.data?.message || 'Ошибка при удалении',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isDeleting.value = false
-    deleteDialogOpened.value = false
-    positionToDelete.value = null
-  }
-}
-
-// === Загрузка данных ===
-
-// Загрузить список должностей с бэкенда
-async function loadPositions() {
-  isLoading.value = true
-  
-  try {
-    const response = await api.get('/positions')
-    positions.value = response.data
-    pagination.value.rowsNumber = response.data.length
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: 'Не удалось загрузить должности',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Загрузить данные при монтировании компонента
+// === Загружаем данные при монтировании ===
 onMounted(() => {
-  loadPositions()
+  loadItems()
 })
 </script>
 

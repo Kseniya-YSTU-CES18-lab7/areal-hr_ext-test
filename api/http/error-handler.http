@@ -1,0 +1,23 @@
+### POST Создать организацию с пустым названием (должно вернуть 400)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "",
+  "comment": "Тест"
+}
+
+### GET Получить несуществующую организацию (должно вернуть 404)
+GET http://localhost:3000/organizations/99999
+
+### POST Создать дубликат организации (должно вернуть 409)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО ТЕСТ",
+  "comment": "Проверка дубликата"
+}
+
+### GET Получить организации (бэкенд выключен — должно вернуть 500 или ошибку сети)
+GET http://localhost:3000/organizations

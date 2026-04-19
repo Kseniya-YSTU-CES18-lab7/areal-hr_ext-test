@@ -26,8 +26,8 @@
             outlined
             dense
             :rules="[
-              val => !!val || 'Введите логин',
-              val => val.length >= 3 || 'Логин должен содержать минимум 3 символа'
+              required('Введите логин'),
+              minLength(3, 'Логин должен содержать минимум 3 символа')
             ]"
           >
             <!-- Иконка слева -->
@@ -44,8 +44,8 @@
             outlined
             dense
             :rules="[
-              val => !!val || 'Введите пароль',
-              val => val.length >= 6 || 'Пароль должен содержать минимум 6 символов'
+              required('Введите пароль'),
+              minLength(6, 'Пароль должен содержать минимум 6 символов')
             ]"
           >
             <!-- Иконка слева -->
@@ -110,6 +110,8 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from 'src/boot/axios'
 import { useQuasar } from 'quasar'
+// Импортируем готовые правила валидации
+import { required, minLength } from 'src/utils/validationRules'
 
 // Получаем экземпляр роутера для навигации
 const router = useRouter()

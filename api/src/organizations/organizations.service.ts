@@ -39,8 +39,13 @@ export class OrganizationsService {
         newValue: newValue?.toString() ?? null,
         operationType,
       });
+      this.logger.debug(`✓ History logged: ${fieldName} for organization ${organizationId}`);
     } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
+      this.logger.error(`✗ Failed to log history for organization ${organizationId}, field ${fieldName}: ${err.message}`, err.stack);
+      // В разработке можно пробросить ошибку для отладки
+      if (process.env.NODE_ENV === 'development') {
+        throw err;
+      }
     }
   }
 

@@ -27,6 +27,7 @@
           outlined
           dense
           clearable
+          @update:model-value="onSearch"
         >
           <template v-slot:prepend>
             <q-icon name="search" color="primary" />
@@ -38,11 +39,12 @@
     <!-- Таблица организаций -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="filteredOrganizations"
+        :rows="items"
         :columns="columns"
         row-key="id"
         :loading="isLoading"
         :pagination="pagination"
+        @update:model-value="onRequestPagination"
         dense
         class="text-dark"
       >
@@ -104,25 +106,22 @@
         <q-card-section>
           <q-form @submit="handleSubmit" class="q-gutter-md">
             
-            <!-- Поле: Название -->
+            <!-- Поле: Название (используем nameRules) -->
             <q-input
               v-model="form.name"
               label="Название организации *"
               outlined
-              :rules="[
-                val => !!val || 'Название обязательно',
-                val => val.length >= 3 || 'Минимум 3 символа'
-              ]"
+              :rules="nameRules"
             />
             
-            <!-- Поле: Комментарий -->
+            <!-- Поле: Комментарий (используем commentRules) -->
             <q-input
               v-model="form.comment"
               label="Комментарий"
               outlined
               type="textarea"
               autogrow
-              :rules="[val => !val || val.length <= 500 || 'Максимум 500 символов']"
+              :rules="commentRules"
             />
             
             <!-- Кнопки формы -->
@@ -131,13 +130,14 @@
                 label="Отмена" 
                 color="grey-7" 
                 text-color="white"
-                @click="dialogOpened = false"
+                @click="closeDialog"
               />
               <q-btn 
                 type="submit" 
                 label="Сохранить" 
                 color="primary"
                 :loading="isSubmitting"
+                :disable="isSubmitting"
               />
             </div>
             
@@ -156,7 +156,7 @@
 
         <q-card-section>
           <div class="text-dark">
-            Вы действительно хотите удалить организацию "{{ organizationToDelete?.name }}"?
+            Вы действительно хотите удалить организацию "{{ itemToDelete?.name }}"?
             <br><br>
             <span class="text-caption text-grey-7">
               Это мягкое удаление — данные можно будет восстановить.
@@ -185,32 +185,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { api } from 'src/boot/axios'
-import { useQuasar } from 'quasar'
+import { onMounted } from 'vue'
+import { useCrudPage } from 'src/composables/useCrudPage'
+import { organizationsService } from 'src/services/organizations'
+import type { Organization, OrganizationCreateDto, OrganizationUpdateDto } from 'src/types/models'
+import { nameRules, commentRules } from 'src/utils/validationRules'
 
-// Получаем экземпляр Quasar для уведомлений и диалогов
-const $q = useQuasar()
+// === Используем composable ===
+const {
+  items,
+  isLoading,
+  pagination,
+  loadItems,
+  onRequestPagination,
+  searchQuery,
+  dialogOpened,
+  isEditing,
+  isSubmitting,
+  form,
+  openCreateDialog,
+  openEditDialog,
+  closeDialog,
+  handleSubmit,
+  deleteDialogOpened,
+  itemToDelete,
+  isDeleting,
+  confirmDelete,
+  handleDelete,
+} = useCrudPage<Organization, OrganizationCreateDto, OrganizationUpdateDto>({
+  service: organizationsService,
+  entityName: 'Организация',
+  defaultForm: { name: '', comment: '' },
+})
 
-// === Состояние таблицы ===
-
-// Колонки таблицы
+// === Колонки таблицы ===
 const columns = [
-  { 
-    name: 'name', 
-    required: true, 
-    label: 'Название', 
-    align: 'left',
-    field: 'name',
-    sortable: true 
-  },
-  { 
-    name: 'comment', 
-    label: 'Комментарий', 
-    align: 'left',
-    field: 'comment',
-    sortable: false 
-  },
+  { name: 'name', required: true, label: 'Название', align: 'left', field: 'name', sortable: true },
+  { name: 'comment', label: 'Комментарий', align: 'left', field: 'comment', sortable: false },
   { 
     name: 'createdAt', 
     label: 'Создана', 
@@ -219,205 +230,24 @@ const columns = [
     sortable: true,
     format: (val: string) => new Date(val).toLocaleDateString('ru-RU')
   },
-  { 
-    name: 'actions', 
-    label: 'Действия', 
-    align: 'right',
-    field: 'actions',
-    sortable: false 
-  },
+  { name: 'actions', label: 'Действия', align: 'right', field: 'actions', sortable: false },
 ]
 
-// Данные организаций
-const organizations = ref<any[]>([])
+// Такой поиск (чтобы не спамить запросами)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
-// Загрузка данных
-const isLoading = ref(false)
-
-// Пагинация
-const pagination = ref({
-  page: 1,
-  rowsPerPage: 10,
-  rowsNumber: 0
-})
-
-// === Поиск ===
-
-// Поисковый запрос
-const searchQuery = ref('')
-
-// Фильтрованные организации (поиск по названию)
-const filteredOrganizations = computed(() => {
-  if (!searchQuery.value) return organizations.value
+function onSearch() {
+  if (searchTimeout) clearTimeout(searchTimeout)
   
-  const query = searchQuery.value.toLowerCase()
-  return organizations.value.filter((org: any) => 
-    org.name?.toLowerCase().includes(query)
-  )
-})
-
-// === Диалог создания/редактирования ===
-
-// Открыт ли диалог
-const dialogOpened = ref(false)
-
-// Режим редактирования (true) или создания (false)
-const isEditing = ref(false)
-
-// Загрузка при отправке формы
-const isSubmitting = ref(false)
-
-// Данные формы
-const form = ref({
-  id: null as string | null,
-  name: '',
-  comment: ''
-})
-
-// Открыть диалог создания
-function openCreateDialog() {
-  isEditing.value = false
-  form.value = { id: null, name: '', comment: '' }
-  dialogOpened.value = true
+  searchTimeout = setTimeout(() => {
+    pagination.value.page = 1
+    loadItems({ search: searchQuery.value || undefined })
+  }, 300)
 }
 
-// Открыть диалог редактирования
-function openEditDialog(organization: any) {
-  isEditing.value = true
-  form.value = {
-    id: organization.id,
-    name: organization.name,
-    comment: organization.comment || ''
-  }
-  dialogOpened.value = true
-}
-
-// Обработка отправки формы
-async function handleSubmit() {
-  isSubmitting.value = true
-  
-  try {
-    if (isEditing.value) {
-      // Редактирование
-      await api.patch(`/organizations/${form.value.id}`, {
-        name: form.value.name,
-        comment: form.value.comment
-      })
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Организация обновлена',
-        icon: 'check_circle',
-        position: 'top-right'
-      })
-    } else {
-      // Создание
-      await api.post('/organizations', {
-        name: form.value.name,
-        comment: form.value.comment
-      })
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Организация создана',
-        icon: 'add_circle',
-        position: 'top-right'
-      })
-    }
-    
-    // Закрыть диалог и обновить список
-    dialogOpened.value = false
-    await loadOrganizations()
-    
-  } catch (error: any) {
-    // Обработка ошибки
-    $q.notify({
-      color: 'negative',
-      message: error.response?.data?.message || 'Ошибка при сохранении',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// === Удаление ===
-
-// Открыт ли диалог удаления
-const deleteDialogOpened = ref(false)
-
-// Организация для удаления
-const organizationToDelete = ref<any>(null)
-
-// Загрузка при удалении
-const isDeleting = ref(false)
-
-// Подтвердить удаление
-function confirmDelete(organization: any) {
-  organizationToDelete.value = organization
-  deleteDialogOpened.value = true
-}
-
-// Обработка удаления
-async function handleDelete() {
-  if (!organizationToDelete.value) return
-  
-  isDeleting.value = true
-  
-  try {
-    // Мягкое удаление
-    await api.delete(`/organizations/${organizationToDelete.value.id}`)
-    
-    $q.notify({
-      color: 'positive',
-      message: 'Организация удалена',
-      icon: 'delete',
-      position: 'top-right'
-    })
-    
-    // Обновить список
-    await loadOrganizations()
-    
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: error.response?.data?.message || 'Ошибка при удалении',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isDeleting.value = false
-    deleteDialogOpened.value = false
-    organizationToDelete.value = null
-  }
-}
-
-// === Загрузка данных ===
-
-// Загрузить список организаций с бэкенда
-async function loadOrganizations() {
-  isLoading.value = true
-  
-  try {
-    const response = await api.get('/organizations')
-    organizations.value = response.data
-    pagination.value.rowsNumber = response.data.length
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: 'Не удалось загрузить организации',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Загрузить данные при монтировании компонента
+// === Загружаем данные при монтировании ===
 onMounted(() => {
-  loadOrganizations()
+  loadItems()
 })
 </script>
 

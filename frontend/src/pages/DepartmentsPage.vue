@@ -27,6 +27,7 @@
           outlined
           dense
           clearable
+          @update:model-value="onSearch"
         >
           <template v-slot:prepend>
             <q-icon name="search" color="primary" />
@@ -39,7 +40,7 @@
     <q-card class="bg-secondary">
       <q-card-section>
         <q-tree
-          :nodes="filteredDepartments"
+          :nodes="filteredDepartmentsTree"
           node-key="id"
           label-key="name"
           default-expand-all
@@ -106,15 +107,12 @@
         <q-card-section>
           <q-form @submit="handleSubmit" class="q-gutter-md">
             
-            <!-- Поле: Название -->
+            <!-- Поле: Название (используем nameRules) -->
             <q-input
               v-model="form.name"
               label="Название отдела *"
               outlined
-              :rules="[
-                val => !!val || 'Название обязательно',
-                val => val.length >= 3 || 'Минимум 3 символа'
-              ]"
+              :rules="nameRules"
             />
             
             <!-- ПОЛЕ: Организация (ОБЯЗАТЕЛЬНОЕ) -->
@@ -152,14 +150,14 @@
               </template>
             </q-select>
             
-            <!-- Поле: Комментарий -->
+            <!-- Поле: Комментарий (используем commentRules) -->
             <q-input
               v-model="form.comment"
               label="Комментарий"
               outlined
               type="textarea"
               autogrow
-              :rules="[val => !val || val.length <= 500 || 'Максимум 500 символов']"
+              :rules="commentRules"
             />
             
             <!-- Кнопки формы -->
@@ -168,7 +166,7 @@
                 label="Отмена" 
                 color="grey-7" 
                 text-color="white"
-                @click="dialogOpened = false"
+                @click="closeDialog"
               />
               <q-btn 
                 type="submit" 
@@ -193,7 +191,7 @@
 
         <q-card-section>
           <div class="text-dark">
-            Вы действительно хотите удалить отдел "{{ departmentToDelete?.name }}"?
+            Вы действительно хотите удалить отдел "{{ itemToDelete?.name }}"?
             <br><br>
             <span class="text-caption text-grey-7">
               Это мягкое удаление — данные можно будет восстановить.
@@ -225,261 +223,101 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { api } from 'src/boot/axios'
-import { useQuasar } from 'quasar'
+import { computed, onMounted, ref } from 'vue'
+import { useCrudPage } from 'src/composables/useCrudPage'
+import { departmentsService } from 'src/services/departments'
+import type { Department, DepartmentCreateDto, DepartmentUpdateDto } from 'src/types/models'
+import { nameRules, commentRules } from 'src/utils/validationRules'
 
-// === Данные организаций (для выбора в форме отдела) ===
-const organizations = ref<any[]>([])
+// === Список организаций для выбора (TODO: загрузить из API) ===
+const organizations = ref<{ id: number; name: string }[]>([
+  { id: 1, name: 'ООО "Ромашка"' },
+  { id: 2, name: 'АО "Луч"' },
+])
 
-// Загрузить список организаций
-async function loadOrganizations() {
-  try {
-    const response = await api.get('/organizations')
-    organizations.value = response.data
-  } catch (error: any) {
-    console.error('Failed to load organizations:', error)
-  }
-}
-
-// Получаем экземпляр Quasar для уведомлений
-const $q = useQuasar()
-
-// === Данные отделов ===
-
-// Все отделы (плоский список от бэкенда)
-const departments = ref<any[]>([])
-
-// Загрузка данных
-const isLoading = ref(false)
-
-// === Поиск ===
-
-// Поисковый запрос
-const searchQuery = ref('')
+// === Используем composable ===
+const {
+  items: departments,
+  isLoading,
+  loadItems,
+  searchQuery,
+  dialogOpened,
+  isEditing,
+  isSubmitting,
+  form,
+  openCreateDialog,
+  closeDialog,
+  handleSubmit,
+  deleteDialogOpened,
+  itemToDelete,
+  isDeleting,
+  confirmDelete,
+  handleDelete,
+} = useCrudPage<Department, DepartmentCreateDto, DepartmentUpdateDto>({
+  service: departmentsService,
+  entityName: 'Отдел',
+  defaultForm: { name: '', organizationId: 1, parentId: null, comment: '' },
+})
 
 // Функция фильтрации для QTree
-function filterDepartments(node: any, filter: string) {
-  if (!filter) return true
-  const lowerFilter = filter.toLowerCase()
-  return node.name?.toLowerCase().includes(lowerFilter) || 
-         node.comment?.toLowerCase().includes(lowerFilter)
+function filterDepartments(node: Department, filter: string) {
+  return true  // Сервер уже отфильтровал данные
 }
 
-// Фильтрованные отделы (для отображения)
-const filteredDepartments = computed(() => {
+// === Построение дерева из плоского списка ===
+const filteredDepartmentsTree = computed(() => {
   return buildDepartmentTree(departments.value)
 })
 
-// === Построение дерева из плоского списка ===
-
-function buildDepartmentTree(departmentsList: any[], parentId: number | null = null): any[] {
+function buildDepartmentTree(departmentsList: Department[], parentId: number | null = null): any[] {
   return departmentsList
-    .filter((dept: any) => dept.parentId === parentId && !dept.deletedAt)
-    .map((dept: any) => ({
+    .filter((dept: Department) => dept.parentId === parentId && !dept.deletedAt)
+    .map((dept: Department) => ({
       ...dept,
       children: buildDepartmentTree(departmentsList, dept.id),
       expandable: buildDepartmentTree(departmentsList, dept.id).length > 0
     }))
 }
 
-// === Опции для выбора родительского отдела (только для ТЕКУЩЕЙ организации) ===
-
+// === Опции для выбора родительского отдела ===
 const parentDepartmentOptions = computed(() => {
-  if (!form.value.organizationId) return []
-  
-  return departments.value.filter((dept: any) => 
+  return departments.value.filter((dept: Department) => 
     !dept.deletedAt && 
-    dept.organizationId === form.value.organizationId && // ← ТОЛЬКО отделы текущей организации
-    (!isEditing.value || dept.id !== form.value.id)
+    (!isEditing.value || (dept.id as number) !== (form.value as any).id)
   )
 })
 
-// === Диалог создания/редактирования ===
-
-// Открыт ли диалог
-const dialogOpened = ref(false)
-
-// Режим редактирования
-const isEditing = ref(false)
-
-// Загрузка при отправке
-const isSubmitting = ref(false)
-
-// Данные формы
-const form = ref({
-  id: null as number | null,
-  name: '',
-  organizationId: null as number | null,
-  parentId: null as number | null,
-  comment: ''
-})
-
-// Открыть диалог создания
-function openCreateDialog(parentId?: number | null, organizationId?: number | null) {
-  isEditing.value = false
-  form.value = { 
-    id: null, 
-    name: '', 
-    organizationId: organizationId ?? organizations.value[0]?.id ?? null,
-    parentId: parentId ?? null, 
-    comment: '' 
-  }
-  dialogOpened.value = true
-}
-
-// Открыть диалог редактирования
-function openEditDialog(department: any) {
+// === Переопределяем openEditDialog для установки organizationId ===
+function openEditDialog(department: Department) {
   isEditing.value = true
   form.value = {
-    id: department.id,
-    name: department.name,
+    ...department,
     organizationId: department.organizationId,
-    parentId: department.parentId,
-    comment: department.comment || ''
-  }
+  } as any
   dialogOpened.value = true
 }
 
-// Обработка отправки формы
-async function handleSubmit() {
-  isSubmitting.value = true
+// Такой поиск (чтобы не спамить запросами)
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+function onSearch() {
+  if (searchTimeout) clearTimeout(searchTimeout)
   
-  try {
-    if (isEditing.value) {
-      // === РЕДАКТИРОВАНИЕ (organizationId не меняем) ===
-      const payload: any = {
-        name: form.value.name,
-        comment: form.value.comment
-      }
-      if (form.value.parentId !== undefined && form.value.parentId !== null) {
-        payload.parentId = form.value.parentId
-      }
-      await api.patch(`/departments/${form.value.id}`, payload)
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Отдел обновлён',
-        icon: 'check_circle',
-        position: 'top-right'
-      })
-    } else {
-      // === СОЗДАНИЕ (organizationId ОБЯЗАТЕЛЬНО) ===
-      const payload: any = {
-        name: form.value.name,
-        organizationId: form.value.organizationId, // ← ОБЯЗАТЕЛЬНОЕ ПОЛЕ
-        comment: form.value.comment
-      }
-      if (form.value.parentId !== undefined && form.value.parentId !== null) {
-        payload.parentId = form.value.parentId
-      }
-      await api.post('/departments', payload)
-      
-      $q.notify({
-        color: 'positive',
-        message: 'Отдел создан',
-        icon: 'add_circle',
-        position: 'top-right'
-      })
-    }
-    
-    dialogOpened.value = false
-    await loadDepartments()
-    
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: error.response?.data?.message || 'Ошибка при сохранении',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isSubmitting.value = false
-  }
+  searchTimeout = setTimeout(() => {
+    loadItems({ orgId: 1, search: searchQuery.value || undefined })
+  }, 300)
 }
 
-// === Удаление ===
-
-// Диалог удаления
-const deleteDialogOpened = ref(false)
-const departmentToDelete = ref<any>(null)
-const isDeleting = ref(false)
-
-function confirmDelete(department: any) {
-  departmentToDelete.value = department
-  deleteDialogOpened.value = true
-}
-
-async function handleDelete() {
-  if (!departmentToDelete.value) return
-  
-  isDeleting.value = true
-  
-  try {
-    await api.delete(`/departments/${departmentToDelete.value.id}`)
-    
-    $q.notify({
-      color: 'positive',
-      message: 'Отдел удалён',
-      icon: 'delete',
-      position: 'top-right'
-    })
-    
-    await loadDepartments()
-    
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: error.response?.data?.message || 'Ошибка при удалении',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isDeleting.value = false
-    deleteDialogOpened.value = false
-    departmentToDelete.value = null
-  }
-}
-
-// === Загрузка данных ===
-
-async function loadDepartments() {
-  isLoading.value = true
-  
-  try {
-    const response = await api.get('/departments')
-    // Убеждаемся, что organizationId есть в ответе
-    departments.value = response.data.map((dept: any) => ({
-      ...dept,
-      organizationId: dept.organizationId ?? dept.organization_id
-    }))
-  } catch (error: any) {
-    $q.notify({
-      color: 'negative',
-      message: 'Не удалось загрузить отделы',
-      icon: 'error',
-      position: 'top-right'
-    })
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Загрузить при монтировании
+// === Загружаем данные при монтировании ===
 onMounted(() => {
-  loadOrganizations()
-  loadDepartments()
+  loadItems({ organizationId: 1 })
 })
 </script>
 
 <style lang="sass" scoped>
-// Используем переменные из quasar-variables.sass
-
-// Заголовок
 .text-h5
   color: $dark
 
-// Дерево отделов
 :deep(.q-tree__node-header)
   padding: 8px 12px
   border-radius: 4px
@@ -490,7 +328,6 @@ onMounted(() => {
 :deep(.q-tree__node-body)
   padding-left: 24px
 
-// Бейдж комментария
 :deep(.q-badge)
   font-size: 0.75rem
 </style>

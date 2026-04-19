@@ -172,3 +172,69 @@ GET http://localhost:3000/departments/tree?organizationId=1
 
 ### POST /positions/1/restore
 POST http://localhost:3000/positions/1/restore
+
+### POST Создать организацию
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "Тестовая организация",
+  "comment": "Для проверки истории"
+}
+
+### GET История по организации (меняем 1 на реальный ID)
+GET http://localhost:3000/history/by-entity?entityType=Organization&entityId=1
+
+### PATCH Обновить организацию
+PATCH http://localhost:3000/organizations/1
+Content-Type: application/json
+
+{
+  "comment": "Обновлённый комментарий"
+}
+
+### POST Создать дубликат организации (должен вернуть 409)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "ООО ТЕСТ",
+  "comment": "Проверка фильтра ошибок"
+}
+
+### POST Создать отдел с несуществующей организацией (должен вернуть 400)
+POST http://localhost:3000/departments
+Content-Type: application/json
+
+{
+  "organizationId": 99999,
+  "name": "Тестовый отдел",
+  "comment": "Проверка внешнего ключа"
+}
+
+### POST Создать новую организацию (должен вернуть 201)
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "Новая тестовая организация",
+  "comment": "Проверка успешного создания"
+}
+
+### POST Создать организацию с уникальным именем
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "Новая тестовая организация",
+  "comment": "Проверка чистых логов"
+}
+
+### GET Организации с пагинацией
+GET http://localhost:3000/organizations?page=1&limit=10&search=Тест
+
+### GET Отделы организации с пагинацией
+GET http://localhost:3000/departments?organizationId=1&page=1&limit=20&search=Бух
+
+### GET Должности с пагинацией
+GET http://localhost:3000/positions?page=1&limit=10&search=Бухгалтер

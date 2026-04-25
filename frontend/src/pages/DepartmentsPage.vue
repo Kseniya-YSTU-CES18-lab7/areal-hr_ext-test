@@ -302,9 +302,8 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 function onSearch() {
   if (searchTimeout) clearTimeout(searchTimeout)
-  
   searchTimeout = setTimeout(() => {
-    loadItems({ orgId: 1, search: searchQuery.value || undefined })
+    loadItems({ organizationId: 1, search: searchQuery.value || undefined })  // organizationId
   }, 300)
 }
 

@@ -22,32 +22,36 @@ export class OrganizationsService {
 
   // Метод для записи в историю
   private async logChange(
-    organizationId: number,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system',
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'Organization',
-        entityId: organizationId.toString(),
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-      this.logger.debug(`✓ History logged: ${fieldName} for organization ${organizationId}`);
-    } catch (err: any) {
-      this.logger.error(`✗ Failed to log history for organization ${organizationId}, field ${fieldName}: ${err.message}`, err.stack);
-      // В разработке можно пробросить ошибку для отладки
-      if (process.env.NODE_ENV === 'development') {
-        throw err;
-      }
+  organizationId: number,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = 'system',
+) {
+  try {
+    // Генерируем валидный UUID для 'system'
+    const validUserId = userId === 'system' 
+      ? '00000000-0000-4000-8000-000000000000'
+      : userId;
+    
+    await this.historyService.create({
+      userId: validUserId,
+      entityType: 'Organization',
+      entityId: organizationId.toString(),
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.log(`✅ History logged: ${fieldName} for organization ${organizationId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for organization ${organizationId}, field ${fieldName}: ${err.message}`, err.stack);
+    if (process.env.NODE_ENV === 'development') {
+      throw err;
     }
   }
+}
 
   /**
    * Создать новую организацию
@@ -67,8 +71,10 @@ export class OrganizationsService {
     // Логирование создания (без DEBUG)
     this.logger.log(`Organization created: ${saved.id} - ${saved.name}`);
 
+    console.log('🔴🔴🔴 СЕЙЧАС БУДЕТ ВЫЗВАН logChange'); // проверка
+
     // История изменений
-    await this.logChange(saved.id, 'organization', null, saved, 'create');
+    await this.logChange(saved.id, 'organization', null, JSON.stringify(saved), 'create');
 
     return saved;
   }
@@ -127,10 +133,10 @@ export class OrganizationsService {
 
     // Логирование изменений по каждому полю
     if (dto.name && dto.name !== organization.name) {
-      await this.logChange(id, 'name', organization.name, dto.name, 'update');
+      await this.logChange(id, 'name', JSON.stringify(organization.name), JSON.stringify(dto.name), 'update');
     }
     if (dto.comment !== undefined && dto.comment !== organization.comment) {
-      await this.logChange(id, 'comment', organization.comment, dto.comment, 'update');
+      await this.logChange(id, 'comment', JSON.stringify(organization.comment), JSON.stringify(dto.comment), 'update');
     }
 
     await this.repo.update(id, {
@@ -150,7 +156,7 @@ export class OrganizationsService {
     const organization = await this.findOne(id);
 
     // Логирование удаления
-    await this.logChange(id, 'deletedAt', null, new Date(), 'delete');
+    await this.logChange(id, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
 
     await this.repo.update(id, { deletedAt: new Date() });
 

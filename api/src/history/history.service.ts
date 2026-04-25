@@ -25,26 +25,35 @@ export class HistoryService {
   }
 
   // Получение последних 100 записей истории (сортировка от новых к старым)
-  async findAll(
+async findAll(
+  filters?: { entityType?: string; operationType?: string; entityId?: string },
   page: number = 1,
   limit: number = 20
 ): Promise<{ data: History[]; total: number; page: number; limit: number }> {
-  this.logger.log(`Finding all history with pagination: page=${page}, limit=${limit}`);
+  this.logger.log(`Finding all history with pagination: page=${page}, limit=${limit}, filters=${JSON.stringify(filters)}`);
   
-  const total = await this.repo.count();
+  // Строим условие where на основе фильтров
+  const where: any = {}
+  
+  if (filters?.entityType) where.entityType = filters.entityType
+  if (filters?.operationType) where.operationType = filters.operationType
+  if (filters?.entityId) where.entityId = filters.entityId
+  
+  const total = await this.repo.count({ where })
   
   const data = await this.repo.find({
+    where,
     order: { createdAt: 'DESC' },
     skip: (page - 1) * limit,
     take: limit,
-  });
+  })
   
   return {
     data,
     total,
     page,
     limit,
-  };
+  }
 }
 
   // Получение истории по типу и ID сущности

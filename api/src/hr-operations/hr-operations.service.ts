@@ -23,28 +23,32 @@ export class HrOperationsService {
 
   // Метод для записи в историю
   private async logChange(
-    operationId: number,
-    employeeId: string,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system'
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'HROperation',
-        entityId: operationId.toString(),
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
+  operationId: number,
+  employeeId: string,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = '00000000-0000-4000-8000-000000000000',
+) {
+  try {
+    await this.historyService.create({
+      userId,
+      entityType: 'HROperation',
+      entityId: operationId.toString(),
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.log(`✅ History logged: ${fieldName} for HR operation ${operationId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for HR operation ${operationId}, field ${fieldName}: ${err.message}`, err.stack);
+    if (process.env.NODE_ENV === 'development') {
+      throw err;
     }
   }
+}
 
   // Создание кадровой операции
   async create(dto: CreateHrOperationDto): Promise<HrOperation> {
@@ -53,7 +57,7 @@ export class HrOperationsService {
     const saved = await this.repo.save(operation);
     
     // Авто-логирование создания
-    await this.logChange(saved.id, saved.employeeId, 'hr_operation', null, saved, 'create');
+    await this.logChange(saved.id, saved.employeeId, 'hr_operation', null, JSON.stringify(saved), 'create');
     return saved;
   }
 
@@ -99,16 +103,16 @@ export class HrOperationsService {
     
     // Логирование каждого изменённого поля
     if (dto.departmentId !== undefined && dto.departmentId !== operation.departmentId) {
-      await this.logChange(id, operation.employeeId, 'departmentId', operation.departmentId, dto.departmentId, 'update');
+      await this.logChange(id, operation.employeeId, 'departmentId', JSON.stringify(operation.departmentId), JSON.stringify(dto.departmentId), 'update');
     }
     if (dto.positionId !== undefined && dto.positionId !== operation.positionId) {
-      await this.logChange(id, operation.employeeId, 'positionId', operation.positionId, dto.positionId, 'update');
+      await this.logChange(id, operation.employeeId, 'positionId', JSON.stringify(operation.positionId), JSON.stringify(dto.positionId), 'update');
     }
     if (dto.salary !== undefined && dto.salary !== operation.salary) {
-      await this.logChange(id, operation.employeeId, 'salary', operation.salary, dto.salary, 'update');
+      await this.logChange(id, operation.employeeId, 'salary', JSON.stringify(operation.salary), JSON.stringify(dto.salary), 'update');
     }
     if (dto.operationDate && dto.operationDate !== operation.operationDate) {
-      await this.logChange(id, operation.employeeId, 'operationDate', operation.operationDate, dto.operationDate, 'update');
+      await this.logChange(id, operation.employeeId, 'operationDate', JSON.stringify(operation.operationDate), JSON.stringify(dto.operationDate), 'update');
     }
     
     await this.repo.update(id, dto);
@@ -120,7 +124,7 @@ export class HrOperationsService {
     this.logger.log(`Soft deleting HR operation: ${id}`);
     const operation = await this.findOne(id);
     // Авто-логирование удаления
-    await this.logChange(id, operation.employeeId, 'deletedAt', null, new Date(), 'delete');
+    await this.logChange(id, operation.employeeId, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

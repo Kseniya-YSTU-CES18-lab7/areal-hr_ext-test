@@ -181,7 +181,21 @@ export function useCrudPage<T extends BaseEntity, CreateDto, UpdateDto>(
     if (isEditing.value) {
       const id = (form.value as any).id
       if (!id) throw new Error('ID не указан')
-      await service.update(id, dto as UpdateDto)
+      
+      // Создаём DTO только с разрешёнными полями для обновления
+      const updateDto: any = {}
+      const currentForm = form.value as any
+      
+      if ('name' in currentForm) updateDto.name = currentForm.name
+      if ('comment' in currentForm) updateDto.comment = currentForm.comment
+      if ('surname' in currentForm) updateDto.surname = currentForm.surname
+      if ('firstName' in currentForm) updateDto.firstName = currentForm.firstName
+      if ('patronymic' in currentForm) updateDto.patronymic = currentForm.patronymic
+      if ('birthDate' in currentForm) updateDto.birthDate = currentForm.birthDate
+      if ('parentId' in currentForm) updateDto.parentId = currentForm.parentId
+      if ('organizationId' in currentForm) updateDto.organizationId = currentForm.organizationId
+      
+      await service.update(id, updateDto as UpdateDto)
       $q.notify({
         color: 'positive',
         message: `${entityName} обновлена`,
@@ -189,20 +203,26 @@ export function useCrudPage<T extends BaseEntity, CreateDto, UpdateDto>(
         position: 'top-right',
       })
       options.onUpdate?.(await service.getById(id))
-      } else {
-        await service.create(dto as CreateDto)
+    } else {
+      await service.create(dto as CreateDto)
+      
+      try {
         await loadItems()
-        $q.notify({
-          color: 'positive',
-          message: `${entityName} создана`,
-          icon: 'add_circle',
-          position: 'top-right',
-        })
-        options.onCreate?.(items.value as any)
+      } catch (reloadError) {
+        console.warn('Не удалось обновить список после создания:', reloadError)
       }
+      
+      $q.notify({
+        color: 'positive',
+        message: `${entityName} создана`,
+        icon: 'add_circle',
+        position: 'top-right',
+      })
+      options.onCreate?.(items.value as any)
+    }
 
-      dialogOpened.value = false
-      form.value = { ...(defaultForm as Partial<T>) }
+    dialogOpened.value = false
+    form.value = { ...(defaultForm as Partial<T>) }
     
   } catch (error: any) {
     const message = error.response?.data?.message || error.message || `Ошибка при сохранении`

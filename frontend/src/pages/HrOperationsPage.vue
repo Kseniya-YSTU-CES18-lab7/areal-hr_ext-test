@@ -286,7 +286,14 @@ const columns = [
   { name: 'operationDate', required: true, label: 'Дата', align: 'left', field: 'operationDate', sortable: true,
     format: (val: string) => val ? new Date(val).toLocaleDateString('ru-RU') : '—' },
   { name: 'operationType', label: 'Тип', align: 'left', field: 'operationType', sortable: true },
-  { name: 'employeeName', label: 'Сотрудник', align: 'left', field: 'employeeName', sortable: true },
+  { 
+    name: 'employeeName', 
+    label: 'Сотрудник', 
+    align: 'left', 
+    field: 'employeeId',  // ← меняем на employeeId
+    sortable: true,
+    format: (val: string) => employeeNameMap.value.get(val) || '—'  // ← мапим в имя
+  },
   { name: 'salary', label: 'Зарплата', align: 'right', field: 'salary', sortable: true,
     format: (val: number) => val ? `${val.toLocaleString('ru-RU')} ₽` : '—' },
   { name: 'actions', label: 'Действия', align: 'right', field: 'actions', sortable: false },
@@ -306,12 +313,23 @@ function onFilter() {
 
 // === Список сотрудников для выбора ===
 const employeeOptions = ref<{ label: string; value: string }[]>([])
+const employeeNameMap = ref<Map<string, string>>(new Map())
 
 async function loadEmployeesForSelect() {
   try {
-    const result = await employeesService.getAll(undefined, undefined, undefined, 1, 100)
+    const result = await employeesService.getAll(undefined, undefined, undefined, 1, 1000)
+    
+    // Заполняем мапу для фильтрации
+    employeeNameMap.value = new Map(
+      result.data.map((emp: Employee) => [
+        emp.id,
+        `${emp.surname} ${emp.firstName} ${emp.patronymic || ''}`.trim()
+      ])
+    )
+    
+    // Заполняем опции для select
     employeeOptions.value = result.data.map((emp: Employee) => ({
-      label: `${emp.surname} ${emp.firstName} ${emp.patronymic || ''}`.trim(),
+      label: employeeNameMap.value.get(emp.id) || '',
       value: emp.id
     }))
   } catch (error) {
@@ -353,8 +371,8 @@ function openEditDialog(operation: HrOperation) {
     operationType: operation.operationType,
     operationDate: operation.operationDate,
     salary: operation.salary,
-    departmentId: operation.departmentId,
-    positionId: operation.positionId
+    departmentId: operation.departmentId ?? null,  
+    positionId: operation.positionId ?? null        
   }
   dialogOpened.value = true
 }
@@ -368,12 +386,28 @@ function openDetailDialog(operation: HrOperation) {
 async function loadOperations() {
   isLoading.value = true
   try {
-    const result = await hrOperationsService.getAll(
-      pagination.value.page,
-      pagination.value.rowsPerPage
-    )
-    operations.value = result.data
-    pagination.value.rowsNumber = result.total
+    const allOperations = await hrOperationsService.getAll()
+    let filtered = allOperations.filter(op => !op.deletedAt)
+    
+    if (filters.value.operationType) {
+      filtered = filtered.filter(op => op.operationType === filters.value.operationType)
+    }
+    
+    if (filters.value.employeeName) {
+      const search = filters.value.employeeName.toLowerCase()
+      filtered = filtered.filter(op => {
+        const empName = employeeNameMap.value.get(op.employeeId)?.toLowerCase() || ''
+        return empName.includes(search)
+      })
+    }
+    
+    // Пагинация на клиенте
+    const start = (pagination.value.page - 1) * pagination.value.rowsPerPage
+    const end = start + pagination.value.rowsPerPage
+    
+    operations.value = filtered.slice(start, end)
+    pagination.value.rowsNumber = filtered.length
+    
   } catch (error: any) {
     $q.notify({
       color: 'negative',
@@ -395,11 +429,21 @@ function onRequestPagination(props: { pagination: { page: number; rowsPerPage: n
 async function handleSubmit() {
   isSubmitting.value = true
   try {
+    // Создаём чистый DTO без служебных полей
+    const dto: HrOperationCreateDto = {
+      employeeId: form.value.employeeId,
+      operationType: form.value.operationType,
+      operationDate: form.value.operationDate,
+      salary: form.value.salary ?? null,
+      departmentId: form.value.departmentId ?? null,
+      positionId: form.value.positionId ?? null,
+    }
+    
     if (isEditing.value && form.value.id) {
-      await hrOperationsService.update(form.value.id, form.value as HrOperationUpdateDto)
+      await hrOperationsService.update(form.value.id, dto as HrOperationUpdateDto)
       $q.notify({ color: 'positive', message: 'Операция обновлена', icon: 'check_circle' })
     } else {
-      await hrOperationsService.create(form.value as HrOperationCreateDto)
+      await hrOperationsService.create(dto)
       $q.notify({ color: 'positive', message: 'Операция создана', icon: 'add_circle' })
     }
     dialogOpened.value = false

@@ -21,7 +21,10 @@ async function bootstrap() {
       whitelist: true,              // удаляет поля, которых нет в DTO
       forbidNonWhitelisted: true,  // бросает ошибку при лишних полях
       transform: true,              // автоматически преобразует типы
-      exceptionFactory: (errors) => new BadRequestException(errors),
+      exceptionFactory: (errors) => {
+  console.log('❌ Validation errors:', JSON.stringify(errors, null, 2));
+  return new BadRequestException(errors);
+},
     }),
   );
   

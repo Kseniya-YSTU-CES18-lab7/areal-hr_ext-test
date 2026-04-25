@@ -8,6 +8,7 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateEmployeeFullDto } from './dto/create-employee-full.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { HistoryService } from '../history/history.service';
+import { DeepPartial } from 'typeorm';
 
 interface EmployeeFilters {
   surname?: string;
@@ -35,33 +36,32 @@ export class EmployeesService {
   ) {}
 
     // Метод для записи в историю
-private async logChange(
-  employeeId: string,
-  fieldName: string,
-  oldValue: any,
-  newValue: any,
-  operationType: 'create' | 'update' | 'delete',
-  userId: string = 'system',
-) {
-  try {
-    await this.historyService.create({
-      userId,
-      entityType: 'Employee',
-      entityId: employeeId,
-      fieldName,
-      oldValue: oldValue?.toString() ?? null,
-      newValue: newValue?.toString() ?? null,
-      operationType,
-    });
-    this.logger.debug(`✓ History logged: ${fieldName} for employee ${employeeId}`);
-  } catch (err: any) {
-    this.logger.error(`✗ Failed to log history for employee ${employeeId}, field ${fieldName}: ${err.message}`, err.stack);
-    // Можно пробросить ошибку для отладки...
-    if (process.env.NODE_ENV === 'development') {
-      throw err;
+  private async logChange(
+    employeeId: string,
+    fieldName: string,
+    oldValue: any,
+    newValue: any,
+    operationType: 'create' | 'update' | 'delete',
+    userId: string = '00000000-0000-4000-8000-000000000000',
+  ) {
+    try {
+      await this.historyService.create({
+        userId,
+        entityType: 'Employee',
+        entityId: employeeId,
+        fieldName,
+        oldValue: oldValue?.toString() ?? null,
+        newValue: newValue?.toString() ?? null,
+        operationType,
+      });
+      this.logger.log(`✅ History logged: ${fieldName} for employee ${employeeId}`);
+    } catch (err: any) {
+      this.logger.error(`✗ Failed to log history for employee ${employeeId}, field ${fieldName}: ${err.message}`, err.stack);
+      if (process.env.NODE_ENV === 'development') {
+        throw err;
+      }
     }
   }
-}
 
   /**
    * Создание сотрудника с паспортными данными и адресом в ОДНОЙ транзакции
@@ -71,13 +71,14 @@ private async logChange(
   this.logger.log(`Creating employee with full data: ${dto.surname} ${dto.firstName}`);
 
   return await this.dataSource.transaction(async (manager) => {
-    // 1. Создаём сотрудника
-    const employee = manager.create(Employee, {
-      surname: dto.surname,
-      firstName: dto.firstName,
-      patronymic: dto.patronymic,
-      birthDate: dto.birthDate,
-    });
+    // 1. Создаём сотрудника с правильными типами
+    const employeeData: DeepPartial<Employee> = {
+    surname: dto.surname,
+    firstName: dto.firstName,
+    patronymic: dto.patronymic ?? null,
+    birthDate: dto.birthDate ?? null,
+  } as any;
+    const employee = manager.create(Employee, employeeData);
     const savedEmployee = await manager.save(employee);
     this.logger.log(`Employee created with ID: ${savedEmployee.id}`);
 
@@ -202,13 +203,13 @@ private async logChange(
 
     // Логирование изменений
     if (dto.surname && dto.surname !== employee.surname) {
-      await this.logChange(id, 'surname', employee.surname, dto.surname, 'update');
+      await this.logChange(id, 'surname', JSON.stringify(employee.surname), JSON.stringify(dto.surname), 'update');
     }
     if (dto.firstName && dto.firstName !== employee.firstName) {
-      await this.logChange(id, 'firstName', employee.firstName, dto.firstName, 'update');
+      await this.logChange(id, 'firstName', JSON.stringify(employee.firstName), JSON.stringify(dto.firstName), 'update');
     }
     if (dto.patronymic !== undefined && dto.patronymic !== employee.patronymic) {
-      await this.logChange(id, 'patronymic', employee.patronymic, dto.patronymic, 'update');
+      await this.logChange(id, 'patronymic', JSON.stringify(employee.patronymic), JSON.stringify(dto.patronymic), 'update');
     }
     if (dto.birthDate && dto.birthDate !== employee.birthDate) {
       await this.logChange(id, 'birthDate', employee.birthDate, dto.birthDate, 'update');

@@ -238,3 +238,12 @@ GET http://localhost:3000/departments?organizationId=1&page=1&limit=20&search=Б
 
 ### GET Должности с пагинацией
 GET http://localhost:3000/positions?page=1&limit=10&search=Бухгалтер
+
+###
+POST http://localhost:3000/organizations
+Content-Type: application/json
+
+{
+  "name": "Тестовая организация",
+  "comment": "Проверка истории"
+}

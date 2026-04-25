@@ -20,27 +20,29 @@ export class DepartmentsService {
   ) {}
 
   private async logChange(
-    departmentId: number,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system',
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'Department',
-        entityId: departmentId.toString(),
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
-    }
+  departmentId: number,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = '00000000-0000-4000-8000-000000000000',
+) {
+  try {
+    await this.historyService.create({
+      userId,
+      entityType: 'Department',
+      entityId: departmentId.toString(),
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.log(`✅ History logged: ${fieldName} for department ${departmentId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for department ${departmentId}, field ${fieldName}: ${err.message}`, err.stack);
+    if (process.env.NODE_ENV === 'development') throw err;
   }
+}
 
   async create(dto: CreateDepartmentDto): Promise<Department> {
     this.logger.log(`Creating department: ${dto.name}`);
@@ -74,7 +76,7 @@ export class DepartmentsService {
     });
 
     const saved = await this.repo.save(department);
-    await this.logChange(saved.id, 'department', null, saved, 'create');
+    await this.logChange(saved.id, 'department', null, JSON.stringify(saved), 'create');
     return saved;
   }
 
@@ -151,7 +153,7 @@ export class DepartmentsService {
     const department = await this.findOne(id);
 
     if (dto.name && dto.name !== department.name) {
-      await this.logChange(id, 'name', department.name, dto.name, 'update');
+      await this.logChange(id, 'name', JSON.stringify(department.name), JSON.stringify(dto.name), 'update');
     }
     if (dto.comment !== undefined && dto.comment !== department.comment) {
       await this.logChange(id, 'comment', department.comment, dto.comment, 'update');
@@ -170,7 +172,7 @@ export class DepartmentsService {
 
   async remove(id: number): Promise<void> {
     await this.findOne(id);
-    await this.logChange(id, 'deletedAt', null, new Date(), 'delete');
+    await this.logChange(id, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

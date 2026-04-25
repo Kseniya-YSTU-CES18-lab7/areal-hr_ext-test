@@ -193,7 +193,11 @@
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer" color="primary">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="form.birthDate" mask="YYYY-MM-DD">
+                      <q-date 
+                        v-model="form.birthDate" 
+                        mask="YYYY-MM-DD"
+                        @update:model-value="closeDatePicker"
+                      >
                         <div class="row items-center justify-end">
                           <q-btn v-close-popup label="Закрыть" color="primary" flat />
                         </div>
@@ -224,91 +228,209 @@
 
           <!-- Вкладка: Паспортные данные -->
           <div v-if="activeTab === 'passport'" class="q-gutter-md">
-            <div v-if="passport" class="q-pa-md bg-white rounded-borders">
-              <div class="text-subtitle1 q-mb-md">Паспортные данные</div>
+            <q-form @submit.prevent="savePassport" class="q-gutter-md">
               
-              <q-list dense>
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Серия</q-item-label>
-                    <q-item-label>{{ passport.series || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Номер</q-item-label>
-                    <q-item-label>{{ passport.number || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Дата выдачи</q-item-label>
-                    <q-item-label>{{ formatDate(passport.issueDate) || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Кем выдан</q-item-label>
-                    <q-item-label>{{ passport.issuedBy || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </div>
-            
-            <div v-else class="text-center q-pa-md">
-              <q-icon name="info" size="3em" color="grey-7" />
-              <div class="q-mt-sm text-grey-7">Паспортные данные не заполнены</div>
-            </div>
+              <div class="row q-gutter-md">
+                <div class="col-6">
+                  <q-input
+                    v-model="passportForm.series"
+                    label="Серия"
+                    outlined
+                    :readonly="!isEditing"
+                    :rules="passportSeriesRules"
+                    mask="####"
+                    fill-mask="#"
+                  />
+                </div>
+                <div class="col-6">
+                  <q-input
+                    v-model="passportForm.number"
+                    label="Номер *"
+                    outlined
+                    :readonly="!isEditing"
+                    :rules="passportNumberRules"
+                    mask="######"
+                    fill-mask="#"
+                  />
+                </div>
+              </div>
+              
+              <q-input
+                v-model="passportForm.issueDate"
+                label="Дата выдачи"
+                outlined
+                :readonly="!isEditing"
+                mask="####-##-##"
+                fill-mask="#"
+              >
+                <template v-slot:append>
+                  <q-icon name="event" class="cursor-pointer">
+                    <q-popup-proxy>
+                      <q-date v-model="passportForm.issueDate" mask="YYYY-MM-DD">
+                        <div class="row items-center justify-end">
+                          <q-btn v-close-popup label="Закрыть" color="primary" flat />
+                        </div>
+                      </q-date>
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+              
+              <q-input
+                v-model="passportForm.departmentCode"
+                label="Код подразделения"
+                outlined
+                :readonly="!isEditing"
+                mask="###-###"
+                fill-mask="#"
+              />
+              
+              <q-input
+                v-model="passportForm.issuedBy"
+                label="Кем выдан *"
+                outlined
+                :readonly="!isEditing"
+                type="textarea"
+                :rules="[val => !!val || 'Обязательное поле']"
+              />
+              
+              <!-- Кнопки (только в режиме редактирования) -->
+              <div v-if="isEditing" class="row justify-end q-gutter-sm q-mt-md">
+                <q-btn 
+                  label="Отмена" 
+                  color="grey-7" 
+                  text-color="white"
+                  @click="resetPassportForm"
+                />
+                <q-btn 
+                  type="submit" 
+                  :label="passportForm.id ? 'Обновить' : 'Добавить'" 
+                  color="primary"
+                  :loading="isPassportSubmitting"
+                />
+              </div>
+              
+            </q-form>
           </div>
 
           <!-- Вкладка: Адрес -->
           <div v-if="activeTab === 'address'" class="q-gutter-md">
-            <div v-if="address" class="q-pa-md bg-white rounded-borders">
-              <div class="text-subtitle1 q-mb-md">Адрес регистрации</div>
+            <q-form @submit.prevent="saveAddress" class="q-gutter-md">
               
-              <q-list dense>
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Область</q-item-label>
-                    <q-item-label>{{ address.region || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Населённый пункт</q-item-label>
-                    <q-item-label>{{ address.locality || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Улица</q-item-label>
-                    <q-item-label>{{ address.street || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Дом</q-item-label>
-                    <q-item-label>{{ address.house || '—' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </div>
-            
-            <div v-else class="text-center q-pa-md">
-              <q-icon name="info" size="3em" color="grey-7" />
-              <div class="q-mt-sm text-grey-7">Адрес не заполнен</div>
-            </div>
+              <q-input
+                v-model="addressForm.region"
+                label="Область/край *"
+                outlined
+                :readonly="!isEditing"
+                :rules="addressFieldRules"
+              />
+              
+              <q-input
+                v-model="addressForm.locality"
+                label="Населённый пункт *"
+                outlined
+                :readonly="!isEditing"
+                :rules="addressFieldRules"
+              />
+              
+              <q-input
+                v-model="addressForm.street"
+                label="Улица *"
+                outlined
+                :readonly="!isEditing"
+                :rules="addressFieldRules"
+              />
+              
+              <div class="row q-gutter-md">
+                <div class="col-4">
+                  <q-input
+                    v-model="addressForm.house"
+                    label="Дом *"
+                    outlined
+                    :readonly="!isEditing"
+                    :rules="houseFieldRules"
+                  />
+                </div>
+                <div class="col-4">
+                  <q-input
+                    v-model="addressForm.building"
+                    label="Корпус"
+                    outlined
+                    :readonly="!isEditing"
+                  />
+                </div>
+                <div class="col-4">
+                  <q-input
+                    v-model="addressForm.apartment"
+                    label="Квартира"
+                    outlined
+                    :readonly="!isEditing"
+                  />
+                </div>
+              </div>
+              
+              <!-- Кнопки (только в режиме редактирования) -->
+              <div v-if="isEditing" class="row justify-end q-gutter-sm q-mt-md">
+                <q-btn 
+                  label="Отмена" 
+                  color="grey-7" 
+                  text-color="white"
+                  @click="resetAddressForm"
+                />
+                <q-btn 
+                  type="submit" 
+                  :label="addressForm.id ? 'Обновить' : 'Добавить'" 
+                  color="primary"
+                  :loading="isAddressSubmitting"
+                />
+              </div>
+              
+            </q-form>
           </div>
 
-          <!-- Вкладка: Файлы -->
+          <!-- Вкладка: Файлы -->         
           <div v-if="activeTab === 'files'" class="q-gutter-md">
+            
+            <!-- Форма загрузки файла -->
+            <q-card class="bg-white">
+              <q-card-section>
+                <div class="text-subtitle1 q-mb-md">Загрузить файл</div>
+                
+                <q-file 
+                  v-model="selectedFile" 
+                  label="Выберите файл"
+                  outlined
+                  dense
+                  @update:model-value="onFileSelected"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="attach_file" />
+                  </template>
+                </q-file>
+                
+                <q-input 
+                  v-model="fileTitle" 
+                  label="Название файла"
+                  class="q-mt-md"
+                  outlined
+                  dense
+                  :rules="[val => !!val || 'Название обязательно']"
+                />
+                
+                <q-btn 
+                  color="primary" 
+                  label="Загрузить" 
+                  class="q-mt-md"
+                  @click="uploadFile"
+                  :loading="isUploading"
+                  :disable="!selectedFile || !fileTitle"
+                />
+              </q-card-section>
+            </q-card>
+
+            <!-- Список файлов -->
             <div v-if="files && files.length > 0">
+              <div class="text-subtitle1 q-mb-sm">Загруженные файлы</div>
               <q-list bordered separator class="rounded-borders bg-white">
                 <q-item v-for="file in files" :key="file.id">
                   <q-item-section avatar>
@@ -321,14 +443,26 @@
                       {{ formatFileSize(file.sizeBytes) }} • {{ file.mimeType || '—' }}
                     </q-item-label>
                   </q-item-section>
+                  
+                  <q-item-section side>
+                    <q-btn
+                      flat
+                      dense
+                      round
+                      icon="delete"
+                      color="negative"
+                      @click="deleteFile(file.id)"
+                    />
+                  </q-item-section>
                 </q-item>
               </q-list>
             </div>
             
-            <div v-else class="text-center q-pa-md">
+            <div v-else class="text-center q-pa-md bg-white rounded-borders">
               <q-icon name="folder_open" size="3em" color="grey-7" />
               <div class="q-mt-sm text-grey-7">Файлы не загружены</div>
             </div>
+            
           </div>
 
         </q-card-section>
@@ -377,14 +511,20 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { employeesService } from 'src/services/employees'
+import { passportsService } from 'src/services/passports'
+import { addressesService } from 'src/services/addresses'
+import { filesService } from 'src/services/files'
 import { 
   surnameRules, 
   firstNameRules, 
-  patronymicRules 
+  patronymicRules,
+  passportSeriesRules,
+  passportNumberRules,
+  addressFieldRules,
+  houseFieldRules
 } from 'src/utils/validationRules'
-import type { Employee, Passport, Address, File } from 'src/types/models'
+import type { Employee, Passport, Address, File as FileEntity } from 'src/types/models'
 
-// Получаем экземпляр Quasar
 const $q = useQuasar()
 
 // === Состояние таблицы ===
@@ -398,24 +538,15 @@ const columns = [
     align: 'left', 
     field: 'birthDate',
     sortable: true,
-    format: (val: string) => val ? new Date(val).toLocaleDateString('ru-RU') : '—'
+    format: (val: string) => formatDate(val, 'date')
   },
   { name: 'actions', label: 'Действия', align: 'right', field: 'actions', sortable: false },
 ]
 
 const employees = ref<Employee[]>([])
 const isLoading = ref(false)
-const pagination = ref({
-  page: 1,
-  rowsPerPage: 10,
-  rowsNumber: 0
-})
-
-// === Поиск (объект для фильтрации по фамилии и имени) ===
-const searchQuery = ref({
-  surname: '',
-  firstName: ''
-})
+const pagination = ref({ page: 1, rowsPerPage: 10, rowsNumber: 0 })
+const searchQuery = ref({ surname: '', firstName: '' })
 
 // === Диалог ===
 const detailDialogOpened = ref(false)
@@ -434,38 +565,52 @@ const form = ref({
 // Данные для вкладок
 const passport = ref<Passport | null>(null)
 const address = ref<Address | null>(null)
-const files = ref<File[]>([])
+const files = ref<FileEntity[]>([])
+
+// === Формы редактирования паспорта и адреса ===
+const passportForm = ref({
+  id: null as number | null,
+  series: '',
+  number: '',
+  issueDate: '',
+  departmentCode: '',
+  issuedBy: ''
+})
+
+const addressForm = ref({
+  id: null as number | null,
+  region: '',
+  locality: '',
+  street: '',
+  house: '',
+  building: '',
+  apartment: ''
+})
+
+const isPassportSubmitting = ref(false)
+const isAddressSubmitting = ref(false)
+
+// === Файлы ===
+const selectedFile = ref<File | null>(null)
+const fileTitle = ref('')
+const isUploading = ref(false)
 
 // === Удаление ===
 const deleteDialogOpened = ref(false)
 const employeeToDelete = ref<Employee | null>(null)
 const isDeleting = ref(false)
 
-// Такой поиск (чтобы не спамить запросами)
-let searchTimeout: ReturnType<typeof setTimeout> | null = null
-
-function onSearch() {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  
-  searchTimeout = setTimeout(() => {
-    pagination.value.page = 1
-    loadEmployees()
-  }, 300)
-}
-
-// === Загрузка данных с серверной фильтрацией ===
-// === Загрузка данных с серверной фильтрацией ===
+// === Загрузка сотрудников ===
 async function loadEmployees() {
   isLoading.value = true
   try {
     const result = await employeesService.getAll(
       searchQuery.value.surname || undefined,
       searchQuery.value.firstName || undefined,
-      undefined,  // departmentId
+      undefined,
       pagination.value.page,
       pagination.value.rowsPerPage
     )
-    
     employees.value = result.data
     pagination.value.rowsNumber = result.total
   } catch (error: any) {
@@ -485,30 +630,78 @@ function onRequestPagination(props: { pagination: { page: number; rowsPerPage: n
   loadEmployees()
 }
 
-// === Диалог ===
+// === Открытие диалога ===
 function openCreateDialog() {
   isEditing.value = true
   activeTab.value = 'main'
+  resetForms()
+  detailDialogOpened.value = true
+}
+
+function resetForms() {
   form.value = { id: '', surname: '', firstName: '', patronymic: '', birthDate: '' }
   passport.value = null
   address.value = null
   files.value = []
-  detailDialogOpened.value = true
+  
+  passportForm.value = { id: null, series: '', number: '', issueDate: '', departmentCode: '', issuedBy: '' }
+  addressForm.value = { id: null, region: '', locality: '', street: '', house: '', building: '', apartment: '' }
+  selectedFile.value = null
+  fileTitle.value = ''
 }
 
-function openEditDialog(employee: any) {
+async function openEditDialog(employee: any) {
   isEditing.value = true
-  activeTab.value = 'main'
-  form.value = {
-    id: employee.id,
-    surname: employee.surname,
-    firstName: employee.firstName,
-    patronymic: employee.patronymic || '',
-    birthDate: employee.birthDate || ''
+  
+  try {
+    const fullEmployee = await employeesService.getById(employee.id)
+    
+    form.value = {
+      id: fullEmployee.id,
+      surname: fullEmployee.surname,
+      firstName: fullEmployee.firstName,
+      patronymic: fullEmployee.patronymic || '',
+      birthDate: fullEmployee.birthDate || ''
+    }
+    
+    if (fullEmployee.passport) {
+      passport.value = fullEmployee.passport
+      passportForm.value = {
+        id: fullEmployee.passport.id,
+        series: fullEmployee.passport.series || '',
+        number: fullEmployee.passport.number,
+        issueDate: fullEmployee.passport.issueDate || '',
+        departmentCode: fullEmployee.passport.departmentCode || '',
+        issuedBy: fullEmployee.passport.issuedBy || ''
+      }
+    }
+    
+    if (fullEmployee.address) {
+      address.value = fullEmployee.address
+      addressForm.value = {
+        id: fullEmployee.address.id,
+        region: fullEmployee.address.region || '',
+        locality: fullEmployee.address.locality || '',
+        street: fullEmployee.address.street || '',
+        house: fullEmployee.address.house || '',
+        building: fullEmployee.address.building || '',
+        apartment: fullEmployee.address.apartment || ''
+      }
+    }
+    
+    files.value = fullEmployee.files || []
+    
+  } catch (error) {
+    console.error('Failed to load full employee data:', error)
+    form.value = {
+      id: employee.id,
+      surname: employee.surname,
+      firstName: employee.firstName,
+      patronymic: employee.patronymic || '',
+      birthDate: employee.birthDate || ''
+    }
   }
-  passport.value = employee.passport || null
-  address.value = employee.address || null
-  files.value = employee.files || []
+  
   detailDialogOpened.value = true
 }
 
@@ -521,7 +714,6 @@ async function handleSubmit() {
   isSubmitting.value = true
   try {
     if (isEditing.value && form.value.id) {
-      // Обновление
       await employeesService.update(form.value.id, {
         surname: form.value.surname,
         firstName: form.value.firstName,
@@ -530,7 +722,6 @@ async function handleSubmit() {
       })
       $q.notify({ color: 'positive', message: 'Сотрудник обновлён', icon: 'check_circle' })
     } else {
-      // Создание
       await employeesService.create({
         surname: form.value.surname,
         firstName: form.value.firstName,
@@ -552,7 +743,133 @@ async function handleSubmit() {
   }
 }
 
-// === Удаление ===
+// === Сохранение паспорта ===
+async function savePassport() {
+  if (!form.value.id) {
+    $q.notify({ color: 'negative', message: 'Сначала сохраните сотрудника' })
+    return
+  }
+  
+  isPassportSubmitting.value = true
+  try {
+    const dto = {
+      employeeId: form.value.id,
+      series: passportForm.value.series || null,
+      number: passportForm.value.number,
+      issueDate: passportForm.value.issueDate || null,
+      departmentCode: passportForm.value.departmentCode || null,
+      issuedBy: passportForm.value.issuedBy
+    }
+    
+    if (passportForm.value.id) {
+      await passportsService.update(passportForm.value.id, dto)
+      $q.notify({ color: 'positive', message: 'Паспорт обновлён', icon: 'check_circle' })
+    } else {
+      await passportsService.create(dto)
+      $q.notify({ color: 'positive', message: 'Паспорт добавлен', icon: 'add_circle' })
+    }
+    
+    const updated = await employeesService.getById(form.value.id)
+    passport.value = updated.passport || null
+    if (updated.passport) {
+      passportForm.value = {
+        id: updated.passport.id,
+        series: updated.passport.series || '',
+        number: updated.passport.number,
+        issueDate: updated.passport.issueDate || '',
+        departmentCode: updated.passport.departmentCode || '',
+        issuedBy: updated.passport.issuedBy || ''
+      }
+    }
+  } catch (error: any) {
+    $q.notify({
+      color: 'negative',
+      message: error.response?.data?.message || 'Ошибка при сохранении паспорта',
+      icon: 'error'
+    })
+  } finally {
+    isPassportSubmitting.value = false
+  }
+}
+
+// === Сохранение адреса ===
+async function saveAddress() {
+  if (!form.value.id) {
+    $q.notify({ color: 'negative', message: 'Сначала сохраните сотрудника' })
+    return
+  }
+  
+  isAddressSubmitting.value = true
+  try {
+    const dto = {
+      employeeId: form.value.id,
+      region: addressForm.value.region || null,
+      locality: addressForm.value.locality || null,
+      street: addressForm.value.street || null,
+      house: addressForm.value.house || null,
+      building: addressForm.value.building || null,
+      apartment: addressForm.value.apartment || null
+    }
+    
+    if (addressForm.value.id) {
+      await addressesService.update(addressForm.value.id, dto)
+      $q.notify({ color: 'positive', message: 'Адрес обновлён', icon: 'check_circle' })
+    } else {
+      await addressesService.create(dto)
+      $q.notify({ color: 'positive', message: 'Адрес добавлен', icon: 'add_circle' })
+    }
+    
+    const updated = await employeesService.getById(form.value.id)
+    address.value = updated.address || null
+    if (updated.address) {
+      addressForm.value = {
+        id: updated.address.id,
+        region: updated.address.region || '',
+        locality: updated.address.locality || '',
+        street: updated.address.street || '',
+        house: updated.address.house || '',
+        building: updated.address.building || '',
+        apartment: updated.address.apartment || ''
+      }
+    }
+  } catch (error: any) {
+    $q.notify({
+      color: 'negative',
+      message: error.response?.data?.message || 'Ошибка при сохранении адреса',
+      icon: 'error'
+    })
+  } finally {
+    isAddressSubmitting.value = false
+  }
+}
+
+// === Сброс форм ===
+function resetPassportForm() {
+  passportForm.value = {
+    id: null,
+    series: '',
+    number: '',
+    issueDate: '',
+    departmentCode: '',
+    issuedBy: ''
+  }
+  passport.value = null
+}
+
+function resetAddressForm() {
+  addressForm.value = {
+    id: null,
+    region: '',
+    locality: '',
+    street: '',
+    house: '',
+    building: '',
+    apartment: ''
+  }
+  address.value = null
+}
+
+// === Удаление сотрудника ===
 function confirmDelete(employee: any) {
   employeeToDelete.value = employee
   deleteDialogOpened.value = true
@@ -578,12 +895,61 @@ async function handleDelete() {
   }
 }
 
-// === Вспомогательные функции ===
-function formatDate(date: string | null): string {
-  if (!date) return '—'
-  return new Date(date).toLocaleDateString('ru-RU')
+// === Работа с файлами ===
+function onFileSelected(file: File | null) {
+  if (file) {
+    fileTitle.value = file.name
+  }
 }
 
+async function uploadFile() {
+  if (!selectedFile.value || !form.value.id) {
+    $q.notify({ color: 'negative', message: 'Выберите файл и сохраните сотрудника' })
+    return
+  }
+  
+  isUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+    formData.append('employeeId', form.value.id)
+    formData.append('title', fileTitle.value)
+    
+    await filesService.upload(formData)
+    $q.notify({ color: 'positive', message: 'Файл загружен', icon: 'upload' })
+    
+    const updated = await filesService.getByEmployeeId(form.value.id)
+    files.value = updated
+    
+    selectedFile.value = null
+    fileTitle.value = ''
+  } catch (error: any) {
+    $q.notify({ 
+      color: 'negative', 
+      message: error.response?.data?.message || 'Ошибка загрузки файла',
+      icon: 'error'
+    })
+  } finally {
+    isUploading.value = false
+  }
+}
+
+async function deleteFile(fileId: number) {
+  try {
+    await filesService.delete(fileId)
+    $q.notify({ color: 'positive', message: 'Файл удалён', icon: 'delete' })
+    const updated = await filesService.getByEmployeeId(form.value.id)
+    files.value = updated
+  } catch (error: any) {
+    $q.notify({ 
+      color: 'negative', 
+      message: error.response?.data?.message || 'Ошибка при удалении файла',
+      icon: 'error'
+    })
+  }
+}
+
+// === Вспомогательные функции ===
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '0 Б'
   const sizes = ['Б', 'КБ', 'МБ', 'ГБ']
@@ -599,30 +965,28 @@ function getFileIcon(mimeType: string | null): string {
   return 'attachment'
 }
 
-// Загружаем данные при монтировании
+function formatDate(dateString: string | null, type: 'date' | 'datetime' = 'date'): string {
+  if (!dateString) return '—'
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '—'
+  
+  if (type === 'datetime') {
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })
+  }
+  return date.toLocaleDateString('ru-RU')
+}
+
+function closeDatePicker() {
+  if (form.value.birthDate instanceof Date) {
+    const date = form.value.birthDate
+    form.value.birthDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  }
+}
+
 onMounted(() => {
   loadEmployees()
 })
 </script>
-
-<style lang="sass" scoped>
-.text-h5
-  color: $dark
-
-.q-table
-  background-color: $secondary
-  color: $dark
-  
-  thead tr
-    background-color: $primary
-    
-  th
-    color: white !important
-    font-weight: 600
-    
-  td
-    border-color: $gray-saturated
-    
-  tbody tr:hover
-    background-color: $gray-light !important
-</style>

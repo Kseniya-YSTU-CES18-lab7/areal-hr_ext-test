@@ -16,11 +16,20 @@ export const historyService = {
    * Получить список записей истории с пагинацией
    */
   async getAll(
+    filters?: {
+      entityType?: string;
+      operationType?: string;
+      entityId?: string;
+    },
     page = 1,
     limit = 20
   ): Promise<{ data: History[]; total: number; page: number; limit: number }> {
     const response = await api.get('/history', {
-      params: { page, limit }
+      params: { 
+        ...filters,
+        page, 
+        limit 
+      }
     })
     return response.data
   },

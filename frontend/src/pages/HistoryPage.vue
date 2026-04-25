@@ -136,16 +136,166 @@ function getOperationTypeColor(value: string): string {
   return colors[value] || 'grey'
 }
 
+// === Форматирование даты и времени ===
+function formatDateTime(dateString: string): string {
+  if (!dateString) return '—'
+  const date = new Date(dateString)
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// === Форматирование значения (oldValue/newValue) ===
+function formatValue(value: any): string {
+  // Пустые значения
+  if (value === null || value === undefined || value === '' || value === 'null') {
+    return '—'
+  }
+  
+  // Если это уже строка
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    
+    // Проверяем, не объект ли в виде строки
+    if (trimmed === '[object Object]' || trimmed === '[Объект]') {
+      return '[Объект]'
+    }
+    
+    // Пытаемся распарсить как JSON (для объектов)
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+        (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        return formatValue(parsed) // Рекурсивно форматируем
+      } catch {
+        // Если не распарсилось — возвращаем как есть
+      }
+    }
+    
+    // Проверяем, не дата ли это в строковом формате
+    // Форматы: "2002-09-27", "2002-09-28T00:00:00.000Z", "2026-04-25T08:03:51.980Z"
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      const date = new Date(trimmed)
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('ru-RU') + 
+               (trimmed.includes('T') ? ' ' + date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'}) : '')
+      }
+    }
+    
+    // Проверяем, не число ли это в строковом формате
+    if (!isNaN(Number(trimmed)) && trimmed !== '') {
+      const num = Number(trimmed)
+      // Если число целое и большое — форматируем с разделителями
+      if (Number.isInteger(num) && Math.abs(num) >= 1000) {
+        return num.toLocaleString('ru-RU')
+      }
+      // Если число с копейками (зарплата) — форматируем как валюту
+      if (!Number.isInteger(num)) {
+        return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽'
+      }
+      return String(num)
+    }
+    
+    // Обычная строка — возвращаем как есть
+    return trimmed
+  }
+  
+  // Если это объект
+  if (typeof value === 'object') {
+    // Если у объекта есть name (организация, отдел, должность)
+    if (value.name) return value.name
+    
+    // Если это сотрудник (surname + firstName)
+    if (value.surname && value.firstName) {
+      return `${value.surname} ${value.firstName} ${value.patronymic || ''}`.trim()
+    }
+    
+    // Если это дата
+    if (value instanceof Date) {
+      return value.toLocaleDateString('ru-RU')
+    }
+    
+    // Если это число
+    if (typeof value === 'number') {
+      if (Number.isInteger(value) && Math.abs(value) >= 1000) {
+        return value.toLocaleString('ru-RU')
+      }
+      if (!Number.isInteger(value)) {
+        return value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽'
+      }
+      return String(value)
+    }
+    
+    // Другие объекты — показываем как JSON
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return '[Объект]'
+    }
+  }
+  
+  // Число, булево и т.д.
+  if (typeof value === 'number') {
+    if (Number.isInteger(value) && Math.abs(value) >= 1000) {
+      return value.toLocaleString('ru-RU')
+    }
+    return String(value)
+  }
+  
+  return String(value)
+}
+
 // === Состояние таблицы ===
 const columns = [
-  { name: 'createdAt', required: true, label: 'Дата и время', align: 'left', field: 'createdAt', sortable: true,
-    format: (val: string) => val ? new Date(val).toLocaleString('ru-RU') : '—' },
-  { name: 'operationType', label: 'Операция', align: 'left', field: 'operationType', sortable: true },
+  {
+    name: 'createdAt',
+    required: true,
+    label: 'Дата и время',
+    align: 'left',
+    field: 'createdAt',
+    sortable: true,
+    format: (val: string) => {
+      if (!val) return '—'
+      const date = new Date(val)
+      return date.toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      })
+    }
+  },
+ 
+  { 
+    name: 'operationType', 
+    label: 'Операция', 
+    align: 'left', 
+    field: 'operationType', 
+    sortable: true,
+    // Убираем стандартный format, чтобы он не показывал текст, и даём заработать нашему кастомному шаблону
+  },
   { name: 'entityType', label: 'Сущность', align: 'left', field: 'entityType', sortable: true },
   { name: 'entityId', label: 'ID сущности', align: 'left', field: 'entityId', sortable: true },
   { name: 'fieldName', label: 'Поле', align: 'left', field: 'fieldName', sortable: true },
-  { name: 'oldValue', label: 'Было', align: 'left', field: 'oldValue', sortable: false },
-  { name: 'newValue', label: 'Стало', align: 'left', field: 'newValue', sortable: false },
+  {
+    name: 'oldValue',
+    label: 'Было',
+    align: 'left',
+    field: 'oldValue',
+    sortable: false,
+    format: (val: any) => formatValue(val)
+  },
+  {
+    name: 'newValue',
+    label: 'Стало',
+    align: 'left',
+    field: 'newValue',
+    sortable: false,
+    format: (val: any) => formatValue(val)
+  },
 ]
 
 const history = ref<History[]>([])
@@ -172,10 +322,13 @@ function onFilter() {
 async function loadHistory() {
   isLoading.value = true
   try {
-    const result = await historyService.getAll(
-      pagination.value.page,
-      pagination.value.rowsPerPage
-    )
+    // Передаём фильтры в сервис
+    const result = await historyService.getAll({
+      entityType: filters.value.entityType || undefined,
+      operationType: filters.value.operationType || undefined,
+      entityId: filters.value.entityId || undefined,
+    }, pagination.value.page, pagination.value.rowsPerPage)
+    
     history.value = result.data
     pagination.value.rowsNumber = result.total
   } catch (error: any) {

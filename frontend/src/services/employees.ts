@@ -15,14 +15,18 @@ export const employeesService = {
    * Получить список сотрудников с пагинацией и фильтрами
    */
   async getAll(
-    surname?: string,
-    firstName?: string,
-    departmentId?: number,
+    params?: { surname?: string; firstName?: string; departmentId?: number },
     page = 1,
     limit = 20
   ): Promise<{ data: Employee[]; total: number; page: number; limit: number }> {
     const response = await api.get('/employees', {
-      params: { surname, firstName, departmentId, page, limit }
+      params: { 
+        surname: params?.surname, 
+        firstName: params?.firstName, 
+        departmentId: params?.departmentId, 
+        page, 
+        limit 
+      }
     })
     return response.data
   },

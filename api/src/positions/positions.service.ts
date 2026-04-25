@@ -20,27 +20,31 @@ export class PositionsService {
   ) {}
 
   private async logChange(
-    positionId: number,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system',
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'Position',
-        entityId: positionId.toString(),
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
+  positionId: number,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = '00000000-0000-4000-8000-000000000000',
+) {
+  try {
+    await this.historyService.create({
+      userId,
+      entityType: 'Position',
+      entityId: positionId.toString(),
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.log(`✅ History logged: ${fieldName} for position ${positionId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for position ${positionId}, field ${fieldName}: ${err.message}`, err.stack);
+    if (process.env.NODE_ENV === 'development') {
+      throw err;
     }
   }
+}
 
   async create(dto: CreatePositionDto): Promise<Position> {
     this.logger.log(`Creating position: ${dto.name}`);
@@ -51,7 +55,7 @@ export class PositionsService {
       throw new ConflictException(`Должность "${dto.name}" уже существует`);
     }
     const saved = await this.repo.save(this.repo.create(dto));
-    await this.logChange(saved.id, 'position', null, saved, 'create');
+    await this.logChange(saved.id, 'position', null, JSON.stringify(saved), 'create');
     return saved;
   }
 
@@ -101,7 +105,7 @@ export class PositionsService {
       if (existing) {
         throw new ConflictException(`Должность "${dto.name}" уже существует`);
       }
-      await this.logChange(id, 'name', position.name, dto.name, 'update');
+      await this.logChange(id, 'name', JSON.stringify(position.name), JSON.stringify(dto.name), 'update');
     }
 
     await this.repo.update(id, { ...dto, updatedAt: new Date() });
@@ -111,7 +115,7 @@ export class PositionsService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Soft deleting position: ${id}`);
     await this.findOne(id);
-    await this.logChange(id, 'deletedAt', null, new Date(), 'delete');
+    await this.logChange(id, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

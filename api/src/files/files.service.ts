@@ -22,28 +22,32 @@ export class FilesService {
 
   // Метод для записи в историю
   private async logChange(
-    fileId: number,
-    employeeId: string,
-    fieldName: string,
-    oldValue: any,
-    newValue: any,
-    operationType: 'create' | 'update' | 'delete',
-    userId: string = 'system',
-  ) {
-    try {
-      await this.historyService.create({
-        userId,
-        entityType: 'File',
-        entityId: fileId.toString(),
-        fieldName,
-        oldValue: oldValue?.toString() ?? null,
-        newValue: newValue?.toString() ?? null,
-        operationType,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to log history: ${err.message}`);
+  fileId: number,
+  employeeId: string,
+  fieldName: string,
+  oldValue: any,
+  newValue: any,
+  operationType: 'create' | 'update' | 'delete',
+  userId: string = '00000000-0000-4000-8000-000000000000',
+) {
+  try {
+    await this.historyService.create({
+      userId,
+      entityType: 'File',
+      entityId: fileId.toString(),
+      fieldName,
+      oldValue: oldValue?.toString() ?? null,
+      newValue: newValue?.toString() ?? null,
+      operationType,
+    });
+    this.logger.log(`✅ History logged: ${fieldName} for file ${fileId}`);
+  } catch (err: any) {
+    this.logger.error(`✗ Failed to log history for file ${fileId}, field ${fieldName}: ${err.message}`, err.stack);
+    if (process.env.NODE_ENV === 'development') {
+      throw err;
     }
   }
+}
 
   // Создание записи о файле после загрузки через Multer
   async createWithFile(dto: CreateFileDto, file: Express.Multer.File): Promise<File> {
@@ -60,7 +64,7 @@ export class FilesService {
     });
 
     const saved = await this.repo.save(fileEntity);
-    await this.logChange(saved.id, dto.employeeId, 'file', null, saved, 'create');
+    await this.logChange(saved.id, dto.employeeId, 'file', null, JSON.stringify(saved), 'create');
 
     return saved;
   }
@@ -125,7 +129,7 @@ export class FilesService {
     const file = await this.findOne(id);
 
     if (dto.title && dto.title !== file.title) {
-      await this.logChange(id, file.employeeId, 'title', file.title, dto.title, 'update');
+      await this.logChange(id, file.employeeId, 'title', JSON.stringify(file.title), JSON.stringify(dto.title), 'update');
     }
 
     await this.repo.update(id, { ...dto });
@@ -136,7 +140,7 @@ export class FilesService {
   async remove(id: number): Promise<void> {
     this.logger.log(`Soft deleting file: ${id}`);
     const file = await this.findOne(id);
-    await this.logChange(id, file.employeeId, 'deletedAt', null, new Date(), 'delete');
+    await this.logChange(id, file.employeeId, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

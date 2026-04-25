@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Expose } from 'class-transformer';
 
 /**
  * Сущность «История изменений» (таблица history)
@@ -9,11 +10,16 @@ export class History {
   id!: number;
 
   // ID пользователя, который сделал изменение
-  // Связь с User будет добавлена позже (неделя 5-6), когда создадим таблицу users
-  @Column({ type: 'uuid', nullable: false, name: 'user_id' })
+  // Пока так, позже добавлю связь с users
+  @Column({ 
+    type: 'varchar',  // 
+    length: 100,      // 
+    nullable: false, 
+    name: 'user_id' 
+  })
   userId!: string;
 
-  // Тип изменённой сущности (Organization, Department, Position, Employee, HROperation)
+  // Тип изменённой сущности (Organization, Department, Position, Employee, HROperation, File)
   @Column({ 
     type: 'varchar', 
     length: 50, 
@@ -49,9 +55,11 @@ export class History {
 
   // Дата и время создания записи (когда произошло изменение)
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
+  @Expose()
   createdAt!: Date;
 
   // Дата и время последнего обновления (автоматически)
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', name: 'updated_at' })
+  @Expose()
   updatedAt!: Date;
 }

@@ -12,15 +12,10 @@ import {
  */
 export const hrOperationsService = {
   /**
-   * Получить список операций с пагинацией
+   * Получить список операций (бэкенд возвращает массив, не пагинацию)
    */
-  async getAll(
-    page = 1,
-    limit = 20
-  ): Promise<{ data: HrOperation[]; total: number; page: number; limit: number }> {
-    const response = await api.get('/hr-operations', {
-      params: { page, limit }
-    })
+  async getAll(): Promise<HrOperation[]> {
+    const response = await api.get<HrOperation[]>('/hr-operations')
     return response.data
   },
 

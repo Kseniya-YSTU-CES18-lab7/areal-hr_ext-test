@@ -18,13 +18,17 @@ export const organizationsService = {
    * Получить список организаций с пагинацией и поиском
    * Используется в: OrganizationsPage.vue для загрузки таблицы
    */
-  async getList(
-    search?: string,
+  async getAll(
+    params?: { search?: string },
     page = 1,
     limit = 20
   ): Promise<PaginatedResponse<Organization>> {
     const response = await api.get<PaginatedResponse<Organization>>('/organizations', {
-      params: { search, page, limit }
+      params: { 
+        search: params?.search, 
+        page, 
+        limit 
+      }
     })
     return response.data
   },

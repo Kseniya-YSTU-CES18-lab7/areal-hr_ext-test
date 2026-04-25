@@ -30,7 +30,8 @@ export default registerAs(
       
       // Настройки TypeORM
       autoLoadEntities: true,      
-      synchronize: false,          
+      synchronize: false,
+      logging: false,      // Отключаем логирование запросов в продакшене          
     };
   },
 );

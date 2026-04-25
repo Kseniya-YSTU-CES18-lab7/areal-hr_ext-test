@@ -22,8 +22,8 @@ export class Employee {
   patronymic!: string | null;
 
   @Column({ type: 'date', nullable: true, name: 'birth_date' })
-  birthDate!: Date | null;
-
+  birthDate!: string | null;
+  
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 

@@ -27,9 +27,9 @@ export class CreateEmployeeDto {
   @Transform(({ value }) => value?.trim())
   patronymic?: string;
 
-  // Дата рождения (необязательное поле, преобразуем в объект Date)
+  // Дата рождения (необязательное поле, ожидаем строку в формате YYYY-MM-DD)
   @IsOptional()
-  @IsDate({ message: 'Дата рождения должна быть корректной датой' })
-  @Transform(({ value }) => value ? new Date(value) : undefined)
-  birthDate?: Date;  // ← изменили на опциональное
+  @IsString({ message: 'Дата рождения должна быть строкой' })
+  @Transform(({ value }) => value ? value.trim() : undefined)
+  birthDate?: string;
 }

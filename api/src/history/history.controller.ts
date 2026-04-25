@@ -35,13 +35,20 @@ export class HistoryController {
   // Получение всех записей истории (последние 100)
   @Get()
   async findAll(
+    @Query('entityType') entityType?: string,
+    @Query('operationType') operationType?: string,
+    @Query('entityId') entityId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string
   ): Promise<{ data: HistoryResponseDto[]; total: number; page: number; limit: number }> {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
-    this.logger.log(`GET /history - find all request: page=${pageNum}, limit=${limitNum}`);
-    const result = await this.service.findAll(pageNum, limitNum);
+    this.logger.log(`GET /history - find all request: page=${pageNum}, limit=${limitNum}, filters: entityType=${entityType}, operationType=${operationType}, entityId=${entityId}`);
+    const result = await this.service.findAll(
+      { entityType, operationType, entityId },
+      pageNum,
+      limitNum
+    );
     return result as any;
   }
 

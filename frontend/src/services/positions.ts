@@ -14,12 +14,16 @@ export const positionsService = {
    * Получить список должностей с пагинацией и поиском
    */
   async getAll(
-    search?: string,
+    params?: { search?: string },
     page = 1,
     limit = 20
   ): Promise<{ data: Position[]; total: number; page: number; limit: number }> {
     const response = await api.get('/positions', {
-      params: { search, page, limit }
+      params: { 
+        search: params?.search, 
+        page, 
+        limit 
+      }
     })
     return response.data
   },

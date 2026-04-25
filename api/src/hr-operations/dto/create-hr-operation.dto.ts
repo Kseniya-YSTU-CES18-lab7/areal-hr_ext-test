@@ -10,7 +10,7 @@ export class CreateHrOperationDto {
   // ID сотрудника (обязательное поле, UUID)
   @IsUUID('4', { message: 'employee_id должен быть корректным UUID' })
   @IsNotEmpty({ message: 'employee_id не может быть пустым' })
-  employeeId: string;
+  employeeId!: string;
 
   // Тип операции (обязательное поле, только из списка)
   @IsString({ message: 'Тип операции должен быть строкой' })
@@ -18,7 +18,7 @@ export class CreateHrOperationDto {
   @IsIn(['hire', 'change_salary', 'change_department', 'dismissal'], {
     message: 'Тип операции должен быть: hire, change_salary, change_department или dismissal'
   })
-  operationType: string;
+  operationType!: string;
 
   // ID отдела
   @IsOptional()
@@ -39,5 +39,5 @@ export class CreateHrOperationDto {
   @IsDate({ message: 'Дата операции должна быть корректной датой' })
   @IsNotEmpty({ message: 'Дата операции не может быть пустой' })
   @Transform(({ value }) => value ? new Date(value) : undefined)
-  operationDate: Date;
+  operationDate!: Date;
 }

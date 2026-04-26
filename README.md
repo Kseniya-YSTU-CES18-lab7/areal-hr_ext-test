@@ -290,3 +290,37 @@ cd frontend && npm run dev
 - Реализованы страницы сотрудников, операций, истории
 - Серверная фильтрация вместо клиентской
 - Расширенная обработка HTTP-ошибок (400, 403, 404, 409, 422, 500)
+
+
+### Недели 5-6: Аутентификация и управление пользователями
+
+## Бэкенд
+- Таблица `users` (UUID, login, Argon2id, role, soft delete)
+- Passport Local Strategy (логин/пароль)
+- Защита эндпоинтов: `@Roles('admin')` + `@UseGuards(AuthGuard, RolesGuard)`
+- Логирование действий в `history`
+
+## Фронтенд
+- Страница `/login` с валидацией
+- Страница `/users` (только для admin)
+- Сессия в `localStorage`
+- Router guards + Axios interceptors (401 → login)
+- Vite proxy: `/api/*` → бэкенд
+
+#### Исправленные ошибки ещё с прошлой недели
+Interceptor excludeAll, formatValue для истории, вкладки паспорта/адреса, rewrite proxy.
+
+### Как запустить
+
+#### Установка
+```bash
+# Бэкенд
+cd api
+npm install
+npm run migration:up
+npm run start:dev
+
+# Фронтенд (в другом терминале)
+cd frontend
+npm install
+npm run dev

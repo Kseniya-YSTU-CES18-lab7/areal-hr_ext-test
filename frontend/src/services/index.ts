@@ -1,6 +1,6 @@
 // Экспортируем все сервисы сразу, удобнее для импорта
 
-export { api } from './api'
+export { api } from '../boot/axios'
 export { organizationsService } from './organizations'
 export { departmentsService } from './departments'
 export { positionsService } from './positions'

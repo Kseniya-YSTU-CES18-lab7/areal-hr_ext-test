@@ -39,7 +39,7 @@
     <!-- Таблица должностей -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="positions"
+        :rows="positions || []"
         :columns="columns"
         row-key="id"
         :loading="isLoading"

@@ -32,6 +32,16 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // Добавляем заголовки с данными пользователя
+    const userData = localStorage.getItem('user_data')
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        config.headers['X-User-Id'] = user.id
+        config.headers['X-User-Role'] = user.role
+      } catch (e) {}
+    }
+    
     // Логируем запросы в development режиме 
     if (import.meta.env.DEV) {
       console.log('[API Request]', {

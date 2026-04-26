@@ -114,29 +114,32 @@ export function useCrudPage<T extends BaseEntity, CreateDto, UpdateDto>(
   })
 
   async function loadItems(params?: Record<string, any>) {
-    isLoading.value = true
-    try {
-      const result = await service.getAll(
-        { ...params, search: searchQuery.value || undefined },
-        pagination.value.page,
-        pagination.value.rowsPerPage
-      )
-      items.value = result.data
-      pagination.value.rowsNumber = result.total
-      
-      options.onLoad?.(result.data)
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } }
-      $q.notify({
-        color: 'negative',
-        message: err.response?.data?.message || `Не удалось загрузить ${entityName.toLowerCase()}`,
-        icon: 'error',
-        position: 'top-right',
-      })
-    } finally {
-      isLoading.value = false
-    }
+  isLoading.value = true
+  try {
+    const result = await service.getAll(
+      { ...params, search: searchQuery.value || undefined },
+      pagination.value.page,
+      pagination.value.rowsPerPage
+    )
+    // Защита от undefined
+    items.value = result?.data || []
+    pagination.value.rowsNumber = result?.total || 0
+    options.onLoad?.(result?.data || [])
+  } catch (error: unknown) {
+    // При ошибке — пустой массив
+    items.value = []
+    pagination.value.rowsNumber = 0
+    const err = error as { response?: { data?: { message?: string } } }
+    $q.notify({
+      color: 'negative',
+      message: err.response?.data?.message || `Не удалось загрузить ${entityName.toLowerCase()}`,
+      icon: 'error',
+      position: 'top-right',
+    })
+  } finally {
+    isLoading.value = false
   }
+}
 
   function openCreateDialog(initialData?: Partial<T>) {
     isEditing.value = false

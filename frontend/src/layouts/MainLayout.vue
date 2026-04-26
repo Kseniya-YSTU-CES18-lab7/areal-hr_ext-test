@@ -161,6 +161,20 @@
           </q-item-section>
         </q-item>
         
+                <!-- Пункт меню: Пользователи (только для админов) -->
+        <q-item 
+          v-if="userRole === 'admin'"
+          clickable 
+          to="/users"
+          active-class="bg-secondary text-dark"
+        >
+          <q-item-section avatar>
+            <q-icon name="people" color="primary" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Пользователи</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
       
     </q-drawer>
@@ -175,40 +189,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import type { UserData } from 'src/services/auth'
 
-// Получаем экземпляр роутера для навигации
 const router = useRouter()
-
-// Реактивная переменная: открыто ли левое меню
 const leftDrawerOpen = ref(false)
 
+// Реактивная переменная для пользователя
+const currentUser = ref<UserData | null>(null)
+
 // Вычисляемое свойство: авторизован ли пользователь
-const isAuthenticated = computed(() => {
-  return !!localStorage.getItem('auth_token')
+const isAuthenticated = computed(() => !!currentUser.value)
+
+// Вычисляемое свойство: роль пользователя
+const userRole = computed(() => currentUser.value?.role || null)
+
+// Загружаем данные пользователя из localStorage при монтировании
+onMounted(() => {
+  const data = localStorage.getItem('user_data')
+  if (data) {
+    try {
+      currentUser.value = JSON.parse(data)
+    } catch (e) {
+      console.error('Failed to parse user_data', e)
+    }
+  }
 })
 
-// Вычисляемое свойство: роль пользователя (заглушка)
-const userRole = computed(() => {
-  // В реальной реализации будем брать из store или токена
-  return 'admin'
-})
-
-// Функция переключения левого меню
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-// Функция выхода из системы
 function handleLogout() {
-  // Удаляем токен из localStorage
   localStorage.removeItem('auth_token')
-  
-  // Закрываем меню (если открыто)
+  localStorage.removeItem('user_data')
+  currentUser.value = null
   leftDrawerOpen.value = false
-  
-  // Перенаправляем на страницу входа
   router.push('/login')
 }
 </script>

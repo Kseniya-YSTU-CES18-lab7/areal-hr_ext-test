@@ -1,7 +1,7 @@
 // Методы update, delete, restore не делать — история не изменяется
 
 // Импортируем базовый API-клиент и типы
-import { api } from './api'
+import { api } from '../boot/axios'
 import { 
   History, 
   HistoryCreateDto 

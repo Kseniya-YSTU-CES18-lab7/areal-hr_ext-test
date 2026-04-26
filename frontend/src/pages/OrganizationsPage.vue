@@ -39,7 +39,7 @@
     <!-- Таблица организаций -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="items"
+        :rows="items || []"
         :columns="columns"
         row-key="id"
         :loading="isLoading"

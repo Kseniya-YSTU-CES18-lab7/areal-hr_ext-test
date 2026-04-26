@@ -1,5 +1,5 @@
 // Импортируем базовый API-клиент и типы
-import { api } from './api'
+import { api } from '../boot/axios'
 import { 
   Department, 
   DepartmentCreateDto, 

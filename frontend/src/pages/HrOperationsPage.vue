@@ -319,21 +319,36 @@ async function loadEmployeesForSelect() {
   try {
     const result = await employeesService.getAll(undefined, undefined, undefined, 1, 1000)
     
-    // Заполняем мапу для фильтрации
-    employeeNameMap.value = new Map(
-      result.data.map((emp: Employee) => [
-        emp.id,
-        `${emp.surname} ${emp.firstName} ${emp.patronymic || ''}`.trim()
-      ])
-    )
+    // Безопасная проверка: если data есть и это массив — мапим
+    if (result?.data && Array.isArray(result.data)) {
+      employeeNameMap.value = new Map(
+        result.data.map((emp: Employee) => [
+          emp.id,
+          `${emp.surname} ${emp.firstName} ${emp.patronymic || ''}`.trim()
+        ])
+      )
+      
+      employeeOptions.value = result.data.map((emp: Employee) => ({
+        label: employeeNameMap.value.get(emp.id) || '',
+        value: emp.id
+      }))
+    } else {
+      employeeOptions.value = []
+      console.warn('⚠️ employeesService.getAll вернул пустой результат:', result)
+    }
+  } catch (error: any) {
+    console.error('❌ Failed to load employees:', error)
+    employeeOptions.value = []
     
-    // Заполняем опции для select
-    employeeOptions.value = result.data.map((emp: Employee) => ({
-      label: employeeNameMap.value.get(emp.id) || '',
-      value: emp.id
-    }))
-  } catch (error) {
-    console.error('Failed to load employees:', error)
+    // Показываем понятное уведомление при ошибке авторизации
+    if (error.response?.status === 401) {
+      $q.notify({
+        color: 'warning',
+        message: 'Сессия истекла. Пожалуйста, войдите снова',
+        icon: 'warning',
+        position: 'top-right'
+      })
+    }
   }
 }
 
@@ -401,14 +416,17 @@ async function loadOperations() {
       })
     }
     
-    // Пагинация на клиенте
     const start = (pagination.value.page - 1) * pagination.value.rowsPerPage
     const end = start + pagination.value.rowsPerPage
     
-    operations.value = filtered.slice(start, end)
-    pagination.value.rowsNumber = filtered.length
+    // Защита от undefined
+    operations.value = filtered?.slice(start, end) || []
+    pagination.value.rowsNumber = filtered?.length || 0
     
   } catch (error: any) {
+    // При ошибке — пустой массив
+    operations.value = []
+    pagination.value.rowsNumber = 0
     $q.notify({
       color: 'negative',
       message: error.response?.data?.message || 'Не удалось загрузить операции',
@@ -491,6 +509,18 @@ async function handleDelete() {
 
 // === Загрузка при монтировании ===
 onMounted(async () => {
+  // Проверяем авторизацию перед загрузкой данных
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    $q.notify({
+      color: 'warning',
+      message: 'Требуется авторизация',
+      icon: 'lock',
+      position: 'top-right'
+    })
+    return
+  }
+  
   await Promise.all([loadEmployeesForSelect(), loadOperations()])
 })
 </script>

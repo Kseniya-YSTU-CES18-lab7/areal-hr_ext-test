@@ -1,7 +1,7 @@
 // Этот файл импортирует: types/models.ts (Шаг 1) и services/api.ts
 // Этот файл импортируется в: OrganizationsPage.vue
 
-import { api } from './api'  
+import { api } from '../boot/axios'
 import { 
   Organization, 
   OrganizationCreateDto, 

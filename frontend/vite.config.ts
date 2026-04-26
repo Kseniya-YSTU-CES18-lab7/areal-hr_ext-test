@@ -20,20 +20,17 @@ export default defineConfig({
   ],
 
   // Настройки сервера для разработки
-  server: {
-    port: 9000, // Порт для фронтенда (9000, чтобы не конфликтовать с бэкендом на порту 3000)
-
-    // Настройка прокси для запросов к бэкенду
-    proxy: {
-      // Все запросы, начинающиеся с /api, будут перенаправляться на бэкенд
-      '/api': {
-        target: 'http://localhost:3000', // Адрес NestJS бэкенда
-        changeOrigin: true,              // Меняем origin заголовок (нужно для некоторых серверов)
-        secure: false,                  // Отключаем проверку SSL (для локальной разработки)
-        
+    server: {
+      port: 9000,  // 🔥 ДОБАВЬТЕ ЭТУ СТРОКУ!
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        }
       }
-    }
-  },
+    },
 
   // Настройки путей (алиасы)
   resolve: {

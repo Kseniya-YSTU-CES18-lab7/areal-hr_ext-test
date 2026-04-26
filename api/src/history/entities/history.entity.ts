@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Expose } from 'class-transformer';
+import { User } from '../../users/entities/user.entity';
 
 /**
  * Сущность «История изменений» (таблица history)
@@ -12,12 +13,15 @@ export class History {
   // ID пользователя, который сделал изменение
   // Пока так, позже добавлю связь с users
   @Column({ 
-    type: 'varchar',  // 
-    length: 100,      // 
     nullable: false, 
     name: 'user_id' 
   })
   userId!: string;
+
+  // Связь с пользователем (много записей истории - один пользователь)
+  @ManyToOne(() => User, (user) => user.history)
+  @JoinColumn({ name: 'user_id' })
+  user!: User;
 
   // Тип изменённой сущности (Organization, Department, Position, Employee, HROperation, File)
   @Column({ 

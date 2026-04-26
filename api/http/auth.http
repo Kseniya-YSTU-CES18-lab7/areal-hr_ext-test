@@ -1,0 +1,32 @@
+### === AUTH API TESTS ===
+# Base URL: http://localhost:3000
+
+### POST Вход в систему (успешный)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "password": "Admin@123"
+}
+
+### POST Вход с неверным паролем (должен вернуть 401)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "password": "wrongpassword"
+}
+
+### POST Вход с несуществующим логином (должен вернуть 401)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "login": "nonexistent",
+  "password": "password123"
+}
+
+### POST Выход из системы
+POST http://localhost:3000/auth/logout

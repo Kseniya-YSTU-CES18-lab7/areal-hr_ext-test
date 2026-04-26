@@ -51,7 +51,7 @@
     <!-- Таблица истории -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="history"
+        :rows="history || []"
         :columns="columns"
         row-key="id"
         :loading="isLoading"
@@ -329,9 +329,13 @@ async function loadHistory() {
       entityId: filters.value.entityId || undefined,
     }, pagination.value.page, pagination.value.rowsPerPage)
     
-    history.value = result.data
-    pagination.value.rowsNumber = result.total
+    // Защита от undefined
+    history.value = result?.data || []
+    pagination.value.rowsNumber = result?.total || 0
   } catch (error: any) {
+    // При ошибке — пустой массив
+    history.value = []
+    pagination.value.rowsNumber = 0
     $q.notify({
       color: 'negative',
       message: error.response?.data?.message || 'Не удалось загрузить историю',

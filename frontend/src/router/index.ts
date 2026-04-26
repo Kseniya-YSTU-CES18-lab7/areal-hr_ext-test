@@ -1,4 +1,3 @@
-// FILE: src/router/index.ts
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import MainLayout from 'src/layouts/MainLayout.vue'
 
@@ -58,6 +57,13 @@ const routes: Array<RouteRecordRaw> = [
         name: 'History',
         component: () => import('src/pages/HistoryPage.vue'),
       },
+      // Пользователи (только для админов)
+      {
+        path: 'users',
+        name: 'Users',
+        component: () => import('src/pages/UsersPage.vue'),
+        meta: { requiresAuth: true, roles: ['admin'] }
+      },
     ],
   },
   {
@@ -75,17 +81,40 @@ const router = createRouter({
 })
 
 // Guard: проверка авторизации перед переходом
-// _from с подчёркиванием — параметр не используется, чтобы линтер не ругался
+// Guard: проверка авторизации перед переходом
 router.beforeEach((to, _from, next) => {
-  const token = localStorage.getItem('auth_token')
-  
-  if (to.meta.requiresAuth && !token) {
-    next('/login')
-  } else if (to.path === '/login' && token) {
-    next('/organizations')
-  } else {
-    next()
+  const userData = localStorage.getItem('user_data')
+  let user: any = null
+  if (userData) {
+    try {
+      user = JSON.parse(userData)
+    } catch (e) {}
   }
+  
+  const isAuthenticated = !!userData
+  
+  // Проверка авторизации
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/login')
+    return
+  }
+  
+  // Проверка ролей
+  if (to.meta.roles && user) {
+    const allowedRoles = to.meta.roles as string[]
+    if (!allowedRoles.includes(user.role)) {
+      next('/organizations')
+      return
+    }
+  }
+  
+  // Если на странице логина и пользователь уже авторизован
+  if (to.path === '/login' && isAuthenticated) {
+    next('/organizations')
+    return
+  }
+  
+  next()
 })
 
 export default router

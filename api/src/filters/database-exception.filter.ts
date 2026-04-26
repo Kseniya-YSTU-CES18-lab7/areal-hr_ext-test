@@ -94,7 +94,7 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       message,
-      // В режиме разработки можно добавить детальную информацию (опционально)
+      // 
       ...(process.env.NODE_ENV === 'development' && {
         debug: {
           code,

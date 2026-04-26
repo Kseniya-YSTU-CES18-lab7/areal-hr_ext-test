@@ -1,0 +1,57 @@
+### === USERS API TESTS ===
+# Base URL: http://localhost:3000
+
+### Вход как администратор
+POST http://localhost:3000/users/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "password": "Admin@123"
+}
+
+### POST Создать пользователя (админ)
+POST http://localhost:3000/users
+Content-Type: application/json
+
+{
+  "surname": "Администраторов",
+  "firstName": "Артём",
+  "patronymic": "Андреевич",
+  "login": "admin",
+  "password": "admin123",
+  "role": "admin"
+}
+
+### POST Создать менеджера
+POST http://localhost:3000/users
+Content-Type: application/json
+
+{
+  "surname": "Менеджеров",
+  "firstName": "Максим",
+  "patronymic": "Михайлович",
+  "login": "manager1",
+  "password": "manager123",
+  "role": "manager"
+}
+
+### GET Получить всех пользователей
+GET http://localhost:3000/users?page=1&limit=10
+
+### GET Получить пользователя по ID
+GET http://localhost:3000/users/<user-id>
+
+### PATCH Обновить пользователя
+PATCH http://localhost:3000/users/<user-id>
+Content-Type: application/json
+
+{
+  "surname": "Обновлённый"
+}
+
+### DELETE Мягкое удаление пользователя
+DELETE http://localhost:3000/users/<user-id>
+
+### POST Восстановление пользователя
+POST http://localhost:3000/users/<user-id>/restore

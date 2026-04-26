@@ -51,7 +51,7 @@
     <!-- Таблица сотрудников -->
     <q-card class="bg-secondary">
       <q-table
-        :rows="employees"
+        :rows="employees || []"
         :columns="columns"
         row-key="id"
         :loading="isLoading"
@@ -600,6 +600,18 @@ const deleteDialogOpened = ref(false)
 const employeeToDelete = ref<Employee | null>(null)
 const isDeleting = ref(false)
 
+// === Поиск с debounce ===
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+function onSearch() {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  
+  searchTimeout = setTimeout(() => {
+    pagination.value.page = 1
+    loadEmployees()
+  }, 300)
+}
+
 // === Загрузка сотрудников ===
 async function loadEmployees() {
   isLoading.value = true
@@ -611,9 +623,12 @@ async function loadEmployees() {
       pagination.value.page,
       pagination.value.rowsPerPage
     )
-    employees.value = result.data
-    pagination.value.rowsNumber = result.total
+    // Защита от undefined
+    employees.value = result?.data || []
+    pagination.value.rowsNumber = result?.total || 0
   } catch (error: any) {
+    employees.value = []  // ← при ошибке пустой массив
+    pagination.value.rowsNumber = 0
     $q.notify({
       color: 'negative',
       message: error.response?.data?.message || 'Не удалось загрузить сотрудников',

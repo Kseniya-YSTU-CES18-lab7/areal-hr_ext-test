@@ -135,33 +135,65 @@ const form = reactive({
 })
 
 // Функция обработки входа
+// Функция обработки входа
 async function handleLogin() {
   errorMessage.value = ''
   isLoading.value = true
   
-  // Имитация задержки сети (чтобы показать спиннер)
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // "Фейковый" токен (без реального запроса к бэкенду)
-  localStorage.setItem('auth_token', 'fake-token-for-testing')
-  localStorage.setItem('user_data', JSON.stringify({
-    id: '1',
-    login: form.login,
-    role: 'admin'
-  }))
-  
-  $q.notify({
-    color: 'positive',
-    message: 'Вход выполнен успешно (тестовый режим)',
-    icon: 'check_circle',
-    position: 'top-right',
-    timeout: 2000
-  })
-  
-  // Переход на страницу организаций
-  router.push('/organizations')
-  
-  isLoading.value = false
+  try {
+    console.log('🔐 Отправляем запрос на вход...', { login: form.login })
+    
+    const response = await api.post('/auth/login', {
+      login: form.login,
+      password: form.password
+    }, {
+      withCredentials: true
+    })
+    
+    console.log('✅ Вход успешен! Данные пользователя:', response.data)
+    
+    // Сохраняем данные пользователя
+    localStorage.setItem('user_data', JSON.stringify(response.data))
+    console.log('💾 Сохранено в localStorage:', localStorage.getItem('user_data'))
+    
+    $q.notify({
+      color: 'positive',
+      message: 'Вход выполнен успешно',
+      icon: 'check_circle',
+      position: 'top-right',
+      timeout: 1000
+    })
+    
+    // Пробуем редирект
+    console.log('🚀 Перенаправляем на /organizations...')
+    
+    // Даем время уведомлению показаться
+    setTimeout(() => {
+      console.log('📍 Текущий путь:', router.currentRoute.value.path)
+      console.log('📍 Доступные маршруты:', router.getRoutes().map(r => r.path))
+      
+      router.push('/organizations').then(() => {
+        console.log('✅ Редирект успешен!')
+      }).catch((err) => {
+        console.error('❌ Ошибка редиректа:', err)
+        // Пробуем альтернативный метод
+        window.location.href = '/organizations'
+      })
+    }, 500)
+    
+  } catch (error: any) {
+    console.error('❌ Ошибка входа:', error)
+    errorMessage.value = error.response?.data?.message || 'Ошибка входа'
+    $q.notify({
+      color: 'negative',
+      message: errorMessage.value,
+      icon: 'error',
+      position: 'top-right',
+      timeout: 3000
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 

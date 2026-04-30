@@ -4,10 +4,22 @@
     <!-- Заголовок страницы -->
     <div class="row items-center q-mb-md">
       <div class="col">
-        <div class="text-h5 text-dark">Сотрудники</div>
+        <div class="text-h5 text-dark">
+          {{ showFired ? 'Уволенные сотрудники' : 'Сотрудники' }}
+        </div>
       </div>
-      <div class="col-auto">
+      <div class="col-auto q-gutter-sm">
+        <!-- Переключатель уволенных -->
+        <q-toggle
+          v-model="showFired"
+          label="Показать уволенных"
+          @update:model-value="onToggleFired"
+          color="negative"
+        />
+        
+        <!-- Кнопка создания (только для активных) -->
         <q-btn 
+          v-if="!showFired"
           label="Создать сотрудника" 
           color="primary" 
           icon="add"
@@ -20,10 +32,11 @@
     <q-card class="q-mb-md bg-secondary">
       <q-card-section>
         <div class="row q-gutter-sm">
-          <div class="col">
+          <!-- Одно поле поиска по ФИО -->
+          <div class="col-8">
             <q-input
-              v-model="searchQuery.surname"
-              label="Поиск по фамилии"
+              v-model="searchQuery.fio"
+              label="Поиск по ФИО"
               outlined
               dense
               clearable
@@ -34,20 +47,30 @@
               </template>
             </q-input>
           </div>
-          <div class="col">
-            <q-input
-              v-model="searchQuery.firstName"
-              label="Поиск по имени"
+          
+          <!-- Фильтр по отделу -->
+          <div class="col-4">
+            <q-select
+              v-model="searchQuery.departmentId"
+              :options="departmentOptions"
+              label="Отдел"
               outlined
-              dense
+              :readonly="!isEditing"
+              option-label="label"
+              option-value="value"
+              emit-value
+              map-options
               clearable
               @update:model-value="onSearch"
-            />
+            >
+              <template v-slot:prepend>
+                <q-icon name="account_tree" color="primary" />
+              </template>
+            </q-select>
           </div>
         </div>
       </q-card-section>
     </q-card>
-
     <!-- Таблица сотрудников -->
     <q-card class="bg-secondary">
       <q-table
@@ -64,39 +87,76 @@
         <template v-slot:body-cell-actions="props">
           <q-td :props="props">
             <div class="row items-center q-gutter-xs">
-              <q-btn
-                flat
-                dense
-                round
-                icon="visibility"
-                color="primary"
-                @click="openDetailDialog(props.row)"
-              >
-                <q-tooltip>Просмотреть</q-tooltip>
-              </q-btn>
+              <!-- Если сотрудник уволен -->
+              <template v-if="props.row.deletedAt">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="restore"
+                  color="positive"
+                  @click="confirmRestore(props.row)"
+                >
+                  <q-tooltip>Восстановить</q-tooltip>
+                </q-btn>
+                
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="visibility"
+                  color="grey-7"
+                  @click="openDetailDialog(props.row)"
+                >
+                  <q-tooltip>Просмотреть (только чтение)</q-tooltip>
+                </q-btn>
+              </template>
               
-              <q-btn
-                flat
-                dense
-                round
-                icon="edit"
-                color="primary"
-                @click="openEditDialog(props.row)"
-              >
-                <q-tooltip>Редактировать</q-tooltip>
-              </q-btn>
-              
-              <q-btn
-                flat
-                dense
-                round
-                icon="delete"
-                color="negative"
-                @click="confirmDelete(props.row)"
-              >
-                <q-tooltip>Удалить</q-tooltip>
-              </q-btn>
+              <!-- Если сотрудник активен -->
+              <template v-else>
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="visibility"
+                  color="primary"
+                  @click="openDetailDialog(props.row)"
+                >
+                  <q-tooltip>Просмотреть</q-tooltip>
+                </q-btn>
+                
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="edit"
+                  color="primary"
+                  @click="openEditDialog(props.row)"
+                >
+                  <q-tooltip>Редактировать</q-tooltip>
+                </q-btn>
+                
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  color="negative"
+                  @click="confirmDelete(props.row)"
+                >
+                  <q-tooltip>Удалить</q-tooltip>
+                </q-btn>
+              </template>
             </div>
+          </q-td>
+        </template>
+
+        <!-- Слот для колонки "Статус" -->
+        <template v-slot:body-cell-status="props">
+          <q-td :props="props">
+            <q-badge :color="props.row.deletedAt ? 'negative' : 'positive'">
+              {{ props.row.deletedAt ? '❌ Уволен' : '✅ Активен' }}
+            </q-badge>
           </q-td>
         </template>
 
@@ -190,6 +250,24 @@
                 mask="####-##-##"
                 fill-mask="#"
               >
+
+              <q-select
+                v-model="form.departmentId"
+                :options="departmentOptions"
+                label="Отдел"
+                outlined
+                :readonly="!isEditing"
+                option-label="label"
+                option-value="value"
+                emit-value
+                map-options
+                clearable
+              >
+                <template v-slot:prepend>
+                  <q-icon name="account_tree" color="primary" />
+                </template>
+              </q-select>
+
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer" color="primary">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -503,7 +581,43 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    
+
+   <!-- Диалог подтверждения восстановления -->
+    <q-dialog v-model="restoreDialogOpened" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center">
+          <q-avatar icon="restore" color="positive" text-color="white" />
+          <span class="q-ml-sm text-dark">Подтвердите восстановление</span>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="text-dark">
+            Вы действительно хотите восстановить сотрудника 
+            "{{ employeeToRestore?.firstName }} {{ employeeToRestore?.surname }}"?
+            <br><br>
+            <span class="text-caption text-grey-7">
+              Сотрудник вернётся в список активных и сможет редактироваться.
+            </span>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn 
+            label="Отмена" 
+            color="grey-7" 
+            text-color="white"
+            @click="restoreDialogOpened = false"
+          />
+          <q-btn 
+            label="Восстановить" 
+            color="positive"
+            :loading="isRestoring"
+            @click="handleRestore"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -514,6 +628,7 @@ import { employeesService } from 'src/services/employees'
 import { passportsService } from 'src/services/passports'
 import { addressesService } from 'src/services/addresses'
 import { filesService } from 'src/services/files'
+import { departmentsService } from 'src/services/departments'
 import { 
   surnameRules, 
   firstNameRules, 
@@ -540,13 +655,23 @@ const columns = [
     sortable: true,
     format: (val: string) => formatDate(val, 'date')
   },
+  // Статус
+  { 
+    name: 'status', 
+    label: 'Статус', 
+    align: 'left', 
+    field: 'deletedAt',
+    sortable: true,
+  },
   { name: 'actions', label: 'Действия', align: 'right', field: 'actions', sortable: false },
 ]
 
 const employees = ref<Employee[]>([])
 const isLoading = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 10, rowsNumber: 0 })
-const searchQuery = ref({ surname: '', firstName: '' })
+const searchQuery = ref({ fio: '', departmentId: undefined as number | undefined})
+// === Список отделов для фильтра ===
+const departmentOptions = ref<{ label: string; value: number }[]>([])
 
 // === Диалог ===
 const detailDialogOpened = ref(false)
@@ -559,7 +684,8 @@ const form = ref({
   surname: '',
   firstName: '',
   patronymic: '',
-  birthDate: ''
+  birthDate: '',
+  departmentId: undefined as number | undefined   
 })
 
 // Данные для вкладок
@@ -600,8 +726,28 @@ const deleteDialogOpened = ref(false)
 const employeeToDelete = ref<Employee | null>(null)
 const isDeleting = ref(false)
 
+// === Переключатель уволенных сотрудников ===
+const showFired = ref(false)
+const restoreDialogOpened = ref(false)
+const employeeToRestore = ref<Employee | null>(null)
+const isRestoring = ref(false)
+
 // === Поиск с debounce ===
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Загрузка отделов
+async function loadDepartmentOptions() {
+  try {
+    const result = await departmentsService.getAll({}, 1, 1000)
+    departmentOptions.value = (result.data || []).map((dept: any) => ({
+      label: dept.name,
+      value: Number(dept.id)  
+    }))
+  } catch (error) {
+    console.error('Failed to load departments:', error)
+    departmentOptions.value = []
+  }
+}
 
 function onSearch() {
   if (searchTimeout) clearTimeout(searchTimeout)
@@ -616,18 +762,38 @@ function onSearch() {
 async function loadEmployees() {
   isLoading.value = true
   try {
-    const result = await employeesService.getAll(
-      searchQuery.value.surname || undefined,
-      searchQuery.value.firstName || undefined,
-      undefined,
-      pagination.value.page,
-      pagination.value.rowsPerPage
-    )
-    // Защита от undefined
+    let result
+    
+    if (showFired.value) {
+      // Загружаем уволенных
+      const fired = await employeesService.getFired()
+      result = { 
+        data: fired, 
+        total: fired.length, 
+        page: 1, 
+        limit: fired.length 
+      }
+    } else {
+      // Загружаем активных с фильтрами
+      const fioParts = searchQuery.value.fio.trim().split(/\s+/)
+      const surname = fioParts[0] || undefined
+      const firstName = fioParts[1] || undefined
+      
+      result = await employeesService.getAll(
+        { 
+          surname: surname || undefined, 
+          firstName: firstName || undefined, 
+          departmentId: searchQuery.value.departmentId || undefined 
+        },
+        pagination.value.page,
+        pagination.value.rowsPerPage
+      )
+    }
+    
     employees.value = result?.data || []
     pagination.value.rowsNumber = result?.total || 0
   } catch (error: any) {
-    employees.value = []  // ← при ошибке пустой массив
+    employees.value = []
     pagination.value.rowsNumber = 0
     $q.notify({
       color: 'negative',
@@ -637,6 +803,11 @@ async function loadEmployees() {
   } finally {
     isLoading.value = false
   }
+}
+
+function onToggleFired() {
+  pagination.value.page = 1
+  loadEmployees()
 }
 
 function onRequestPagination(props: { pagination: { page: number; rowsPerPage: number } }) {
@@ -654,7 +825,7 @@ function openCreateDialog() {
 }
 
 function resetForms() {
-  form.value = { id: '', surname: '', firstName: '', patronymic: '', birthDate: '' }
+  form.value = { id: '', surname: '', firstName: '', patronymic: '', birthDate: '', departmentId: undefined }
   passport.value = null
   address.value = null
   files.value = []
@@ -666,17 +837,34 @@ function resetForms() {
 }
 
 async function openEditDialog(employee: any) {
+  // Блокируем редактирование уволенных
+  if (employee.deletedAt) {
+    $q.notify({
+      color: 'warning',
+      message: 'Невозможно редактировать уволенного сотрудника. Сначала восстановите его.',
+      icon: 'warning',
+      position: 'top-right'
+    })
+    return  
+  }
+  
   isEditing.value = true
   
   try {
     const fullEmployee = await employeesService.getById(employee.id)
     
+    console.log('🔍 DEBUG fullEmployee:', fullEmployee)
+    console.log('🔍 DEBUG departmentId from API:', (fullEmployee as any).departmentId)
+
     form.value = {
       id: fullEmployee.id,
       surname: fullEmployee.surname,
       firstName: fullEmployee.firstName,
       patronymic: fullEmployee.patronymic || '',
-      birthDate: fullEmployee.birthDate || ''
+      birthDate: fullEmployee.birthDate || '',
+      departmentId: (fullEmployee as any).departmentId 
+        ? Number((fullEmployee as any).departmentId) 
+        : undefined
     }
     
     if (fullEmployee.passport) {
@@ -728,21 +916,37 @@ function openDetailDialog(employee: any) {
 async function handleSubmit() {
   isSubmitting.value = true
   try {
+    // Создаём payload
+    const payload: any = {
+      surname: form.value.surname,
+      firstName: form.value.firstName,
+      patronymic: form.value.patronymic || null,
+      birthDate: form.value.birthDate || null,
+    }
+    
+    // Отладка: что отправляем
+    console.log('🔍 DEBUG payload before send:', payload)
+    console.log('🔍 DEBUG form.departmentId:', form.value.departmentId, 'type:', typeof form.value.departmentId)
+    
+    // Попробуем так
+    const rawDeptId = form.value.departmentId;
+    const deptId = typeof rawDeptId === 'object' && rawDeptId !== null && rawDeptId.value !== undefined
+      ? rawDeptId.value  
+      : rawDeptId;       
+
+    // Если есть валидное число — добавляем в payload
+    if (deptId !== undefined && deptId !== null && deptId !== '' && !isNaN(Number(deptId))) {
+      payload.departmentId = Number(deptId);
+      console.log('✅ Added departmentId to payload:', payload.departmentId);
+    } else {
+      console.log('⚠️ departmentId NOT added (raw:', rawDeptId, ', extracted:', deptId, ')');
+    }
+    
     if (isEditing.value && form.value.id) {
-      await employeesService.update(form.value.id, {
-        surname: form.value.surname,
-        firstName: form.value.firstName,
-        patronymic: form.value.patronymic || null,
-        birthDate: form.value.birthDate || null
-      })
+      await employeesService.update(form.value.id, payload)
       $q.notify({ color: 'positive', message: 'Сотрудник обновлён', icon: 'check_circle' })
     } else {
-      await employeesService.create({
-        surname: form.value.surname,
-        firstName: form.value.firstName,
-        patronymic: form.value.patronymic || null,
-        birthDate: form.value.birthDate || null
-      })
+      await employeesService.create(payload)
       $q.notify({ color: 'positive', message: 'Сотрудник создан', icon: 'add_circle' })
     }
     detailDialogOpened.value = false
@@ -917,6 +1121,32 @@ function onFileSelected(file: File | null) {
   }
 }
 
+// === Восстановление уволенного сотрудника ===
+function confirmRestore(employee: Employee) {
+  employeeToRestore.value = employee
+  restoreDialogOpened.value = true
+}
+
+async function handleRestore() {
+  if (!employeeToRestore.value) return
+  isRestoring.value = true
+  try {
+    await employeesService.restore(employeeToRestore.value.id)
+    $q.notify({ color: 'positive', message: 'Сотрудник восстановлен', icon: 'restore' })
+    await loadEmployees()
+  } catch (error: any) {
+    $q.notify({
+      color: 'negative',
+      message: error.response?.data?.message || 'Ошибка при восстановлении',
+      icon: 'error'
+    })
+  } finally {
+    isRestoring.value = false
+    restoreDialogOpened.value = false
+    employeeToRestore.value = null
+  }
+}
+
 async function uploadFile() {
   if (!selectedFile.value || !form.value.id) {
     $q.notify({ color: 'negative', message: 'Выберите файл и сохраните сотрудника' })
@@ -1002,6 +1232,7 @@ function closeDatePicker() {
 }
 
 onMounted(() => {
+  loadDepartmentOptions()
   loadEmployees()
 })
 </script>

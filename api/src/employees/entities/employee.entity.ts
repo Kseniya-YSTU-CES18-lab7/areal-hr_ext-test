@@ -1,8 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToOne, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToOne, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Passport } from '../../passports/entities/passport.entity';
 import { Address } from '../../addresses/entities/address.entity';
 import { File } from '../../files/entities/file.entity';
 import { HrOperation } from '../../hr-operations/entities/hr-operation.entity';
+import { Department } from '../../departments/entities/department.entity';
 
 /**
  * Сущность «Сотрудник» (таблица employees)
@@ -24,6 +25,14 @@ export class Employee {
   @Column({ type: 'date', nullable: true, name: 'birth_date' })
   birthDate!: string | null;
   
+  // Связь с отделом
+  @Column({ type: 'integer', nullable: true, name: 'department_id' })
+  departmentId!: number | null;
+
+  @ManyToOne(() => Department, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'department_id' })
+  department!: Department | null;
+  
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 
@@ -33,11 +42,11 @@ export class Employee {
   @Column({ type: 'timestamp', nullable: true, default: null, name: 'deleted_at' })
   deletedAt!: Date | null;
 
-  // Связь 1:1 с паспортом (FK находится в Passport, поэтому @JoinColumn здесь не нужен)
+  // Связь 1:1 с паспортом (FK находится в Passport)
   @OneToOne(() => Passport, (passport) => passport.employee, { cascade: true })
   passport!: Passport;
 
-  // Связь 1:1 с адресом (FK находится в Address, поэтому @JoinColumn здесь не нужен)
+  // Связь 1:1 с адресом (FK находится в Address)
   @OneToOne(() => Address, (address) => address.employee, { cascade: true })
   address!: Address;
 

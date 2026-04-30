@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, DataSource } from 'typeorm';  
 import { HrOperation } from './entities/hr-operation.entity';
+import { Employee } from '../employees/entities/employee.entity';
 import { CreateHrOperationDto } from './dto/create-hr-operation.dto';
 import { UpdateHrOperationDto } from './dto/update-hr-operation.dto';
 import { HistoryService } from '../history/history.service';
@@ -17,47 +18,135 @@ export class HrOperationsService {
   constructor(
     @InjectRepository(HrOperation)
     private readonly repo: Repository<HrOperation>,
-    // 🔹 ДОБАВЛЕНО: инжект HistoryService
+    // Репозиторий сотрудников для обновления при увольнении
+    @InjectRepository(Employee)
+    private readonly employeeRepo: Repository<Employee>,
+    
     private readonly historyService: HistoryService,
+    private readonly dataSource: DataSource,  // для транзакций
   ) {}
 
   // Метод для записи в историю
   private async logChange(
-  operationId: number,
-  employeeId: string,
-  fieldName: string,
-  oldValue: any,
-  newValue: any,
-  operationType: 'create' | 'update' | 'delete',
-  userId: string = '00000000-0000-4000-8000-000000000000',
-) {
-  try {
-    await this.historyService.create({
-      userId,
-      entityType: 'HROperation',
-      entityId: operationId.toString(),
-      fieldName,
-      oldValue: oldValue?.toString() ?? null,
-      newValue: newValue?.toString() ?? null,
-      operationType,
-    });
-    this.logger.log(`✅ History logged: ${fieldName} for HR operation ${operationId}`);
-  } catch (err: any) {
-    this.logger.error(`✗ Failed to log history for HR operation ${operationId}, field ${fieldName}: ${err.message}`, err.stack);
-    if (process.env.NODE_ENV === 'development') {
-      throw err;
+    operationId: number,
+    employeeId: string,
+    fieldName: string,
+    oldValue: any,
+    newValue: any,
+    operationType: 'create' | 'update' | 'delete',
+    userId: string,
+  ) {
+    try {
+      await this.historyService.create({
+        userId,
+        entityType: 'HROperation',
+        entityId: operationId.toString(),
+        fieldName,
+        oldValue: oldValue?.toString() ?? null,
+        newValue: newValue?.toString() ?? null,
+        operationType,
+      });
+      this.logger.log(`✅ History logged: ${fieldName} for HR operation ${operationId}`);
+    } catch (err: any) {
+      this.logger.error(`✗ Failed to log history for HR operation ${operationId}, field ${fieldName}: ${err.message}`, err.stack);
+      if (process.env.NODE_ENV === 'development') {
+        throw err;
+      }
     }
   }
-}
+
+  // Метод для логирования изменений сотрудника
+  private async logEmployeeChange(
+    employeeId: string,
+    fieldName: string,
+    oldValue: any,
+    newValue: any,
+    operationType: 'create' | 'update' | 'delete',
+    note?: string,
+    userId?: string,
+  ) {
+    try {
+      await this.historyService.create({
+        userId: userId ?? '00000000-0000-4000-8000-000000000000',
+        entityType: 'Employee',
+        entityId: employeeId,
+        fieldName,
+        oldValue: oldValue?.toString() ?? null,
+        newValue: newValue?.toString() ?? null,
+        operationType,
+      });
+      this.logger.log(`✅ Employee history logged: ${fieldName} ${operationType} for ${employeeId}${note ? ` (${note})` : ''}`);
+    } catch (err: any) {
+      this.logger.error(`✗ Failed to log employee history: ${err.message}`, err.stack);
+      // Не выбрасываем ошибку, чтобы не ломать основную операцию
+    }
+  }
 
   // Создание кадровой операции
-  async create(dto: CreateHrOperationDto): Promise<HrOperation> {
+  async create(dto: CreateHrOperationDto, userId?: string): Promise<HrOperation> {
     this.logger.log(`Creating HR operation: ${dto.operationType} for employee: ${dto.employeeId}`);
+    
+    // Если операция — увольнение, обновляем сотрудника в транзакции
+    if (dto.operationType === 'dismissal') {
+      return await this.dataSource.transaction(async (manager) => {
+        // 1. Создаём запись об операции
+        const operation = manager.create(HrOperation, dto);
+        const savedOperation = await manager.save(operation);
+        
+        // 2. Находим сотрудника и помечаем как уволенного
+        const employee = await manager.findOne(Employee, {
+          where: { id: dto.employeeId, deletedAt: IsNull() },
+        });
+        
+        if (!employee) {
+          throw new NotFoundException(`Сотрудник с id ${dto.employeeId} не найден или уже уволен`);
+        }
+        
+        // 3. Обновляем deletedAt у сотрудника
+        await manager.update(Employee, { id: dto.employeeId }, { deletedAt: new Date() });
+        
+        // 4. Логируем увольнение в историю сотрудника
+        await this.logEmployeeChange(
+          dto.employeeId,
+          'deletedAt',
+          null,
+          new Date().toISOString(),
+          'delete',
+          'Увольнение через кадровую операцию',
+          userId
+        );
+        
+        // 5. Логируем создание операции
+        const operationDescription = `${dto.operationType} для сотрудника ${dto.employeeId}`;
+        await this.logChange(
+          savedOperation.id, 
+          savedOperation.employeeId, 
+          'hr_operation', 
+          null, 
+          operationDescription,
+          'create',
+          userId ?? '00000000-0000-4000-8000-000000000000'
+        );
+        
+        this.logger.log(`✅ Employee ${dto.employeeId} marked as fired via HR operation ${savedOperation.id}`);
+        return savedOperation;
+      });
+    }
+    
+    // Для остальных типов операций — обычное создание
     const operation = this.repo.create(dto);
     const saved = await this.repo.save(operation);
     
     // Авто-логирование создания
-    await this.logChange(saved.id, saved.employeeId, 'hr_operation', null, JSON.stringify(saved), 'create');
+    await this.logChange(
+      saved.id, 
+      saved.employeeId, 
+      'hr_operation', 
+      null, 
+      JSON.stringify(saved), 
+      'create',
+      userId ?? '00000000-0000-4000-8000-000000000000'
+    );
     return saved;
   }
 
@@ -95,7 +184,7 @@ export class HrOperationsService {
   }
 
   // Обновление операции (updated_at обновляется автоматически)
-  async update(id: number, dto: UpdateHrOperationDto): Promise<HrOperation> {
+  async update(id: number, dto: UpdateHrOperationDto, userId?: string): Promise<HrOperation> {
     this.logger.log(`Updating HR operation: ${id}`);
     
     // Получаем текущую операцию для логирования
@@ -103,16 +192,16 @@ export class HrOperationsService {
     
     // Логирование каждого изменённого поля
     if (dto.departmentId !== undefined && dto.departmentId !== operation.departmentId) {
-      await this.logChange(id, operation.employeeId, 'departmentId', JSON.stringify(operation.departmentId), JSON.stringify(dto.departmentId), 'update');
+      await this.logChange(id, operation.employeeId, 'departmentId', JSON.stringify(operation.departmentId), JSON.stringify(dto.departmentId), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
     }
     if (dto.positionId !== undefined && dto.positionId !== operation.positionId) {
-      await this.logChange(id, operation.employeeId, 'positionId', JSON.stringify(operation.positionId), JSON.stringify(dto.positionId), 'update');
+      await this.logChange(id, operation.employeeId, 'positionId', JSON.stringify(operation.positionId), JSON.stringify(dto.positionId), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
     }
     if (dto.salary !== undefined && dto.salary !== operation.salary) {
-      await this.logChange(id, operation.employeeId, 'salary', JSON.stringify(operation.salary), JSON.stringify(dto.salary), 'update');
+      await this.logChange(id, operation.employeeId, 'salary', JSON.stringify(operation.salary), JSON.stringify(dto.salary), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
     }
     if (dto.operationDate && dto.operationDate !== operation.operationDate) {
-      await this.logChange(id, operation.employeeId, 'operationDate', JSON.stringify(operation.operationDate), JSON.stringify(dto.operationDate), 'update');
+      await this.logChange(id, operation.employeeId, 'operationDate', JSON.stringify(operation.operationDate), JSON.stringify(dto.operationDate), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
     }
     
     await this.repo.update(id, dto);
@@ -120,11 +209,11 @@ export class HrOperationsService {
   }
 
   // Мягкое удаление операции
-  async remove(id: number): Promise<void> {
+  async remove(id: number, userId?: string): Promise<void> {
     this.logger.log(`Soft deleting HR operation: ${id}`);
     const operation = await this.findOne(id);
     // Авто-логирование удаления
-    await this.logChange(id, operation.employeeId, 'deletedAt', null, JSON.stringify(new Date()), 'delete');
+    await this.logChange(id, operation.employeeId, 'deletedAt', null, JSON.stringify(new Date()), 'delete', userId ?? '00000000-0000-4000-8000-000000000000');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

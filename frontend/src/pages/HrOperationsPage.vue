@@ -143,6 +143,10 @@
               :options="operationTypeOptions"
               label="Тип операции *"
               outlined
+              emit-value       
+              map-options       
+              option-label="label"
+              option-value="value"
               :rules="[val => !!val || 'Тип операции обязателен']"
             />
             
@@ -315,12 +319,15 @@ function onFilter() {
 const employeeOptions = ref<{ label: string; value: string }[]>([])
 const employeeNameMap = ref<Map<string, string>>(new Map())
 
+// ✅ Стало (правильно - 3 аргумента):
 async function loadEmployeesForSelect() {
   try {
-    const result = await employeesService.getAll(undefined, undefined, undefined, 1, 1000)
+    // Загружаем только активных сотрудников (без уволенных)
+    const result = await employeesService.getAll({}, 1, 1000)
     
-    // Безопасная проверка: если data есть и это массив — мапим
+    // Безопасная проверка
     if (result?.data && Array.isArray(result.data)) {
+      // Создаём мап ID → ФИО для отображения в таблице
       employeeNameMap.value = new Map(
         result.data.map((emp: Employee) => [
           emp.id,
@@ -328,27 +335,30 @@ async function loadEmployeesForSelect() {
         ])
       )
       
+      // Формируем опции для q-select
       employeeOptions.value = result.data.map((emp: Employee) => ({
-        label: employeeNameMap.value.get(emp.id) || '',
+        label: `${emp.surname} ${emp.firstName} ${emp.patronymic || ''}`.trim(),
         value: emp.id
       }))
+      
+      console.log(`✅ Loaded ${employeeOptions.value.length} employees for select`)
     } else {
       employeeOptions.value = []
-      console.warn('⚠️ employeesService.getAll вернул пустой результат:', result)
+      console.warn('⚠️ No employees found or invalid response:', result)
     }
   } catch (error: any) {
     console.error('❌ Failed to load employees:', error)
     employeeOptions.value = []
     
-    // Показываем понятное уведомление при ошибке авторизации
-    if (error.response?.status === 401) {
-      $q.notify({
-        color: 'warning',
-        message: 'Сессия истекла. Пожалуйста, войдите снова',
-        icon: 'warning',
-        position: 'top-right'
-      })
-    }
+    // Показываем понятное уведомление
+    $q.notify({
+      color: error.response?.status === 401 ? 'warning' : 'negative',
+      message: error.response?.status === 401 
+        ? 'Сессия истекла. Пожалуйста, войдите снова' 
+        : (error.response?.data?.message || 'Не удалось загрузить сотрудников'),
+      icon: error.response?.status === 401 ? 'warning' : 'error',
+      position: 'top-right'
+    })
   }
 }
 
@@ -509,19 +519,24 @@ async function handleDelete() {
 
 // === Загрузка при монтировании ===
 onMounted(async () => {
-  // Проверяем авторизацию перед загрузкой данных
-  const token = localStorage.getItem('auth_token')
-  if (!token) {
+  // Проверяем user_data 
+  const userData = localStorage.getItem('user_data')
+  if (!userData) {
     $q.notify({
       color: 'warning',
       message: 'Требуется авторизация',
       icon: 'lock',
       position: 'top-right'
     })
+    // редирект на login
+    // router.push('/login')
     return
   }
   
+  console.log('🔍 Loading employees and operations...')
   await Promise.all([loadEmployeesForSelect(), loadOperations()])
+  console.log('✅ Employees loaded:', employeeOptions.value.length)
+  console.log('✅ Operations loaded:', operations.value.length)
 })
 </script>
 

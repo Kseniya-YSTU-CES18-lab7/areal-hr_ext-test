@@ -294,8 +294,23 @@ const columns = [
     align: 'left',
     field: 'newValue',
     sortable: false,
-    format: (val: any) => formatValue(val)
-  },
+    format: (val: any, row: any) => {
+      // Обработка для deletedAt
+      if (row?.fieldName === 'deletedAt' && val) {
+        const date = new Date(val)
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }
+      }
+      return formatValue(val)
+    }
+  }
 ]
 
 const history = ref<History[]>([])

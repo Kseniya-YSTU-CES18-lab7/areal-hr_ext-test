@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, Like, DataSource } from 'typeorm';
+import { Repository, IsNull, Not, Like, DataSource, Brackets } from 'typeorm'; 
 import { Employee } from './entities/employee.entity';
 import { Passport } from '../passports/entities/passport.entity';
 import { Address } from '../addresses/entities/address.entity';
@@ -36,17 +36,20 @@ export class EmployeesService {
   ) {}
 
     // Метод для записи в историю
-  private async logChange(
+    private async logChange(
     employeeId: string,
     fieldName: string,
     oldValue: any,
     newValue: any,
     operationType: 'create' | 'update' | 'delete',
-    userId: string = '00000000-0000-4000-8000-000000000000',
+    userId: string,
   ) {
+    // ОТЛАДКА
+    //console.log('🔍 DEBUG logChange - userId received:', userId);
+    
     try {
       await this.historyService.create({
-        userId,
+        userId,  // должен быть реальный ID
         entityType: 'Employee',
         entityId: employeeId,
         fieldName,
@@ -67,7 +70,7 @@ export class EmployeesService {
    * Создание сотрудника с паспортными данными и адресом в ОДНОЙ транзакции
    * Если что-то упадёт — всё откатится назад
    */
-  async createFull(dto: CreateEmployeeFullDto): Promise<Employee> {
+  async createFull(dto: CreateEmployeeFullDto, userId?: string): Promise<Employee> {
   this.logger.log(`Creating employee with full data: ${dto.surname} ${dto.firstName}`);
 
   return await this.dataSource.transaction(async (manager) => {
@@ -77,6 +80,7 @@ export class EmployeesService {
     firstName: dto.firstName,
     patronymic: dto.patronymic ?? null,
     birthDate: dto.birthDate ?? null,
+    departmentId: dto.departmentId ?? null,
   } as any;
     const employee = manager.create(Employee, employeeData);
     const savedEmployee = await manager.save(employee);
@@ -112,7 +116,8 @@ export class EmployeesService {
     }
 
     // 4. Логирование
-    await this.logChange(savedEmployee.id, 'employee', null, savedEmployee, 'create');
+    const fullName = `${savedEmployee.surname} ${savedEmployee.firstName} ${savedEmployee.patronymic || ''}`.trim();
+    await this.logChange(savedEmployee.id, 'employee', null, fullName, 'create', userId ?? '00000000-0000-4000-8000-000000000000');
 
     // 5. Возвращаем сотрудника с связями
     const result = await manager.findOne(Employee, {
@@ -130,41 +135,61 @@ export class EmployeesService {
    * Создание сотрудника (метод, без паспорта и адреса)
    * для обратной совместимости
    */
-  async create(dto: CreateEmployeeDto): Promise<Employee> {
+    async create(dto: CreateEmployeeDto, userId?: string): Promise<Employee> {
     this.logger.log(`Creating employee: ${dto.surname} ${dto.firstName}`);
     const employee = this.repo.create(dto);
     const saved = await this.repo.save(employee);
-    await this.logChange(saved.id, 'employee', null, saved, 'create');
+    const fullName = `${saved.surname} ${saved.firstName} ${saved.patronymic || ''}`.trim();
+    await this.logChange(saved.id, 'employee', null, fullName, 'create', userId ?? '00000000-0000-4000-8000-000000000000');
     return saved;
   }
 
   // Получение всех активных сотрудников
-  async findAll(
+async findAll(
   filters?: EmployeeFilters,
   page: number = 1,
   limit: number = 20
-): Promise<{ data: Employee[]; total: number; page: number; limit: number }> {
-  this.logger.log(`Finding all employees with pagination: page=${page}, limit=${limit}`, filters);
+): Promise<{ data: Employee[]; total: number; page: number; limit: number }> {  
   
-  const where: any = { deletedAt: IsNull() };
+  const query = this.repo.createQueryBuilder('employee')
+    .where('employee.deletedAt IS NULL');
   
-  if (filters?.surname) {
-    where.surname = Like(`%${filters.surname}%`);
+  // Поиск по ФИО (фамилия ИЛИ имя ИЛИ отчество)
+  if (filters?.surname || filters?.firstName) {
+    const searchTerms: string[] = [];
+    if (filters?.surname) searchTerms.push(filters.surname);
+    if (filters?.firstName) searchTerms.push(filters.firstName);
+    
+    if (searchTerms.length > 0) {
+      query.andWhere(
+        new Brackets(qb => {
+          searchTerms.forEach((term, index) => {
+            const paramName = `search${index}`;
+            const searchTerm = `%${term}%`;
+            qb.orWhere(`employee.surname ILIKE :${paramName}`, { [paramName]: searchTerm })
+              .orWhere(`employee.firstName ILIKE :${paramName}`, { [paramName]: searchTerm })
+              .orWhere(`employee.patronymic ILIKE :${paramName}`, { [paramName]: searchTerm });
+          });
+        })
+      );
+    }
   }
-  if (filters?.firstName) {
-    where.firstName = Like(`%${filters.firstName}%`);
+  
+  // Фильтрация по отделу
+  if (filters?.departmentId) {
+    query.andWhere('employee.departmentId = :departmentId', { departmentId: filters.departmentId });
   }
-  // departmentId добавлю позже, когда появится связь с отделами
-  
-  const total = await this.repo.count({ where });
-  const data = await this.repo.find({
-    where,
-    order: { surname: 'ASC', firstName: 'ASC' },
-    skip: (page - 1) * limit,
-    take: limit,
-    relations: ['passport', 'address'],
-  });
-  
+
+  const [data, total] = await query
+    .leftJoinAndSelect('employee.passport', 'passport')
+    .leftJoinAndSelect('employee.address', 'address')
+    .leftJoinAndSelect('employee.department', 'department')
+    .orderBy('employee.surname', 'ASC')
+    .addOrderBy('employee.firstName', 'ASC')
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
   return { data, total, page, limit };
 }
 
@@ -183,7 +208,7 @@ export class EmployeesService {
     this.logger.log(`Finding employee by id: ${id}`);
     const employee = await this.repo.findOne({
       where: { id, deletedAt: IsNull() },
-      relations: ['passport', 'address', 'files', 'operations'],
+      relations: ['passport', 'address', 'files', 'operations', 'department'],
     });
     if (!employee) {
       throw new NotFoundException(`Сотрудник с id ${id} не найден`);
@@ -192,35 +217,60 @@ export class EmployeesService {
   }
 
   // Обновление сотрудника
-  async update(id: string, dto: UpdateEmployeeDto): Promise<Employee> {
-    this.logger.log(`Updating employee: ${id}`);
-    const employee = await this.repo.findOne({
-      where: { id, deletedAt: IsNull() },
-    });
-    if (!employee) {
-      throw new NotFoundException(`Сотрудник с id ${id} не найден или уволен`);
-    }
-
-    // Логирование изменений
-    if (dto.surname && dto.surname !== employee.surname) {
-      await this.logChange(id, 'surname', JSON.stringify(employee.surname), JSON.stringify(dto.surname), 'update');
-    }
-    if (dto.firstName && dto.firstName !== employee.firstName) {
-      await this.logChange(id, 'firstName', JSON.stringify(employee.firstName), JSON.stringify(dto.firstName), 'update');
-    }
-    if (dto.patronymic !== undefined && dto.patronymic !== employee.patronymic) {
-      await this.logChange(id, 'patronymic', JSON.stringify(employee.patronymic), JSON.stringify(dto.patronymic), 'update');
-    }
-    if (dto.birthDate && dto.birthDate !== employee.birthDate) {
-      await this.logChange(id, 'birthDate', employee.birthDate, dto.birthDate, 'update');
-    }
-
-    await this.repo.update(id, { ...dto });
-    return await this.findOne(id);
+async update(id: string, dto: UpdateEmployeeDto, userId?: string): Promise<Employee> {
+  this.logger.log(`Updating employee: ${id}`);
+  const employee = await this.repo.findOne({
+    where: { id, deletedAt: IsNull() },
+  });
+  if (!employee) {
+    throw new NotFoundException(`Сотрудник с id ${id} не найден или уволен`);
   }
 
+  // Логирование изменений (передаём userId)
+  if (dto.surname && dto.surname !== employee.surname) {
+    await this.logChange(id, 'surname', JSON.stringify(employee.surname), JSON.stringify(dto.surname), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
+  }
+  if (dto.firstName && dto.firstName !== employee.firstName) {
+    await this.logChange(id, 'firstName', JSON.stringify(employee.firstName), JSON.stringify(dto.firstName), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
+  }
+  if (dto.patronymic !== undefined && dto.patronymic !== employee.patronymic) {
+    await this.logChange(id, 'patronymic', JSON.stringify(employee.patronymic), JSON.stringify(dto.patronymic), 'update', userId ?? '00000000-0000-4000-8000-000000000000');
+  }
+  if (dto.birthDate && dto.birthDate !== employee.birthDate) {
+    await this.logChange(id, 'birthDate', employee.birthDate, dto.birthDate, 'update', userId ?? '00000000-0000-4000-8000-000000000000');
+  }
+
+  // Логирование изменения отдела
+  if (dto.departmentId !== undefined) {
+    const oldDeptId = employee.departmentId;
+    const newDeptId = dto.departmentId;
+    
+    if (oldDeptId !== newDeptId) {
+      await this.logChange(
+        id, 
+        'departmentId', 
+        oldDeptId?.toString() ?? null, 
+        newDeptId?.toString() ?? null, 
+        'update',
+        userId ?? '00000000-0000-4000-8000-000000000000'
+      );
+      this.logger.log(`📝 History logged: departmentId changed from ${oldDeptId} to ${newDeptId} for employee ${id}`);
+    }
+  }
+
+  this.logger.log(`🔍 DEBUG update payload for employee ${id}:`, {
+    surname: dto.surname,
+    firstName: dto.firstName,
+    departmentId: (dto as any).departmentId,
+    hasDepartmentId: (dto as any).departmentId !== undefined
+  });
+
+  await this.repo.update(id, { ...dto });
+  return await this.findOne(id);
+}
+
   // Мягкое удаление сотрудника
-  async remove(id: string): Promise<void> {
+  async remove(id: string, userId?: string): Promise<void> {
     this.logger.log(`Soft deleting employee: ${id}`);
     const employee = await this.repo.findOne({
       where: { id, deletedAt: IsNull() },
@@ -228,7 +278,8 @@ export class EmployeesService {
     if (!employee) {
       throw new NotFoundException(`Сотрудник с id ${id} не найден или уволен`);
     }
-    await this.logChange(id, 'deletedAt', null, new Date(), 'delete');
+    // 🔥 Передаём userId
+    await this.logChange(id, 'deletedAt', null, new Date(), 'delete', userId ?? '00000000-0000-4000-8000-000000000000');
     await this.repo.update(id, { deletedAt: new Date() });
   }
 

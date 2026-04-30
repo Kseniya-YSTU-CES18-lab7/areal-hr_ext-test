@@ -8,11 +8,16 @@ import {
   ParseIntPipe, 
   HttpCode, 
   HttpStatus, 
-  Logger 
+  Logger,
+  UseGuards,  
 } from '@nestjs/common';
+
 import { HistoryService } from './history.service';
 import { CreateHistoryDto } from './dto/create-history.dto';
-import { HistoryResponseDto } from './dto/history.response.dto';   
+import { HistoryResponseDto } from './dto/history.response.dto';
+import { RolesGuard } from '../common/guards/roles.guard';  
+import { Roles } from '../common/decorators/roles.decorator';
+import { SessionGuard } from '../common/guards/session.guard';  
 
 /**
  * Контроллер для управления историей изменений (аудит)
@@ -24,16 +29,20 @@ export class HistoryController {
 
   constructor(private readonly service: HistoryService) {}
 
-  // Создание записи в истории
+  // Создание записи в истории (обычно вызывается автоматически, но защитим)
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin', 'manager')
   async create(@Body() dto: CreateHistoryDto): Promise<HistoryResponseDto> {
     this.logger.log('POST /history - create request');
     return (await this.service.create(dto)) as any;
   }
 
-  // Получение всех записей истории (последние 100)
+  // Получение всех записей истории (аудит — только для админов)
   @Get()
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
   async findAll(
     @Query('entityType') entityType?: string,
     @Query('operationType') operationType?: string,
@@ -54,6 +63,8 @@ export class HistoryController {
 
   // Получение истории по типу и ID сущности
   @Get('by-entity')
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
   async findByEntity(
     @Query('entity_type') entityType: string,
     @Query('entity_id') entityId: string
@@ -64,6 +75,8 @@ export class HistoryController {
 
   // Получение истории по ID пользователя
   @Get('by-user/:userId')
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
   async findByUserId(@Param('userId') userId: string): Promise<HistoryResponseDto[]> {
     this.logger.log(`GET /history/by-user/${userId} - find by user request`);
     return (await this.service.findByUserId(userId)) as any;
@@ -71,6 +84,8 @@ export class HistoryController {
 
   // Получение записи истории по ID
   @Get(':id')
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<HistoryResponseDto> {
     this.logger.log(`GET /history/${id} - find one request`);
     return (await this.service.findOne(id)) as any;

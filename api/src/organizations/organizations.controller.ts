@@ -12,12 +12,17 @@ import {
   Logger,
   UseInterceptors,
   ClassSerializerInterceptor,
-  Query
+  Query,
+  UseGuards,
 } from '@nestjs/common';
+
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationResponseDto } from './dto/organization.response.dto';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { SessionGuard } from '../common/guards/session.guard';  
 
 /**
  * Контроллер для обработки HTTP-запросов к организациям
@@ -29,10 +34,12 @@ export class OrganizationsController {
   constructor(private readonly service: OrganizationsService) {}
 
   /**
-   * Создать организацию
+   * Создать организацию (только для админов и менеджеров)
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin', 'manager')
   @UseInterceptors(ClassSerializerInterceptor)
   async create(@Body() dto: CreateOrganizationDto): Promise<OrganizationResponseDto> {
     this.logger.log(`POST /organizations - create request: ${dto.name}`);
@@ -42,9 +49,10 @@ export class OrganizationsController {
   }
 
   /**
-   * Получить список всех активных организаций
+   * Получить список всех активных организаций (доступно всем авторизованным)
    */
   @Get()
+  @UseGuards(SessionGuard)  
   @UseInterceptors(ClassSerializerInterceptor)
   async findAll(
     @Query('search') search?: string,
@@ -59,9 +67,10 @@ export class OrganizationsController {
   }
 
   /**
-   * Найти организацию по ID
+   * Найти организацию по ID (доступно всем авторизованным)
    */
   @Get(':id')
+  @UseGuards(SessionGuard)  
   @UseInterceptors(ClassSerializerInterceptor)
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<OrganizationResponseDto> {
     this.logger.log(`GET /organizations/${id} - find one request`);
@@ -69,9 +78,11 @@ export class OrganizationsController {
   }
 
   /**
-   * Обновить организацию
+   * Обновить организацию (только для админов и менеджеров)
    */
   @Patch(':id')
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin', 'manager')
   @UseInterceptors(ClassSerializerInterceptor)
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateOrganizationDto): Promise<OrganizationResponseDto> {
     this.logger.log(`PATCH /organizations/${id} - update request`);
@@ -79,22 +90,28 @@ export class OrganizationsController {
   }
 
   /**
-   * Мягкое удаление организации
+   * Мягкое удаление организации (только для админов)
    */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
+  @UseInterceptors(ClassSerializerInterceptor)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     this.logger.log(`DELETE /organizations/${id} - remove request`);
     return await this.service.remove(id);
   }
 
   /**
-   * Восстановить удалённую организацию
+   * Восстановить удалённую организацию (только для админов)
    */
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(SessionGuard, RolesGuard)  
+  @Roles('admin')
+  @UseInterceptors(ClassSerializerInterceptor)
   async restore(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    this.logger.log(`POST /organizations/${id}/restore - restore request`);
+    this.logger.log(`POST /organizations/${id} - restore request`);
     return await this.service.restore(id);
   }
 }

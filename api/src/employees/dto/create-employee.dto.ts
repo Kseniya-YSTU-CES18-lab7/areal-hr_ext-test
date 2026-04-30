@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsDate, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
@@ -32,4 +32,17 @@ export class CreateEmployeeDto {
   @IsString({ message: 'Дата рождения должна быть строкой' })
   @Transform(({ value }) => value ? value.trim() : undefined)
   birthDate?: string;
+
+  // Отдел (необязательное поле)
+  @IsOptional()
+  @Transform(({ value }) => {
+    // Если пусто — возвращаем undefined (поле не будет отправлено)
+    if (value === null || value === undefined || value === '' || value === 'null') {
+      return undefined;
+    }
+    // Преобразуем в число
+    const num = Number(value);
+    return isNaN(num) ? undefined : num;
+  })
+  departmentId?: number;
 }

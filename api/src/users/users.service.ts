@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Like } from 'typeorm';
+import { Repository, IsNull, Brackets } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,24 +16,45 @@ export class UsersService {
     private historyService: HistoryService,
   ) {}
 
+  // Поиск по логину ИЛИ фамилии ИЛИ имени ИЛИ отчеству
   async findAll(
     search?: string,
     page: number = 1,
     limit: number = 20
-  ): Promise<{ data: User[]; total: number; page: number; limit: number }> {
-    const where: any = { deletedAt: IsNull() };
+  ): Promise<{ data: User[]; total: number; page: number; limit: number }> {  
     
-    if (search) {
-      where.login = Like(`%${search}%`);
+    const query = this.repo.createQueryBuilder('user')
+      .where('user.deletedAt IS NULL');
+    
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      
+      query.andWhere(
+        new Brackets(qb => {
+          qb.where('user.login ILIKE :search', { search: searchTerm })
+            .orWhere('user.surname ILIKE :search', { search: searchTerm })
+            .orWhere('user.firstName ILIKE :search', { search: searchTerm })  
+            .orWhere('user.patronymic ILIKE :search', { search: searchTerm });
+        })
+      );
     }
 
-    const [data, total] = await this.repo.findAndCount({
-      where,
-      select: ['id', 'surname', 'firstName', 'patronymic', 'login', 'role', 'createdAt', 'updatedAt'],
-      order: { surname: 'ASC', firstName: 'ASC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const [data, total] = await query
+      .select([
+        'user.id',
+        'user.surname',
+        'user.firstName', 
+        'user.patronymic',
+        'user.login',
+        'user.role',
+        'user.createdAt',
+        'user.updatedAt'
+      ])
+      .orderBy('user.surname', 'ASC')
+      .addOrderBy('user.firstName', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
     return { data, total, page, limit };
   }
@@ -57,7 +78,6 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
 
-    // Если меняем логин — проверяем на дубликат
     if (dto.login && dto.login !== user.login) {
       const existing = await this.repo.findOne({
         where: { login: dto.login, deletedAt: IsNull() },
@@ -76,7 +96,6 @@ export class UsersService {
       });
     }
 
-    // Если меняем фамилию
     if (dto.surname && dto.surname !== user.surname) {
       await this.historyService.create({
         userId: 'system',
@@ -89,7 +108,6 @@ export class UsersService {
       });
     }
 
-    // Если меняем имя
     if (dto.firstName && dto.firstName !== user.firstName) {
       await this.historyService.create({
         userId: 'system',
@@ -102,7 +120,6 @@ export class UsersService {
       });
     }
 
-    // Если меняем отчество
     if (dto.patronymic !== undefined && dto.patronymic !== user.patronymic) {
       await this.historyService.create({
         userId: 'system',
@@ -115,7 +132,6 @@ export class UsersService {
       });
     }
 
-    // Если меняем роль
     if (dto.role && dto.role !== user.role) {
       await this.historyService.create({
         userId: 'system',
@@ -128,7 +144,6 @@ export class UsersService {
       });
     }
 
-    // Если меняем пароль — хешируем (пароль не логируем!)
     if (dto.password) {
       dto.password = await this.authService.hashPassword(dto.password);
     }

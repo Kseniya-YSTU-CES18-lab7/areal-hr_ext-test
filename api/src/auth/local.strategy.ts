@@ -7,7 +7,10 @@ import { AuthService } from './auth.service';
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     // Указываем, что поле логина называется 'login', а не 'username' (по умолчанию)
-    super({ usernameField: 'login' });
+    super({ 
+      usernameField: 'login',
+      session: true,  
+    });
   }
 
   async validate(login: string, password: string): Promise<any> {

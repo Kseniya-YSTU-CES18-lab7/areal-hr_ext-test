@@ -147,7 +147,7 @@ async function handleLogin() {
       login: form.login,
       password: form.password
     }, {
-      withCredentials: true
+      //withCredentials: true
     })
     
     console.log('✅ Вход успешен! Данные пользователя:', response.data)

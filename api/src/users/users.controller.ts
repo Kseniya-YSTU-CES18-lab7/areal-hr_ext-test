@@ -14,7 +14,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -22,6 +22,7 @@ import { LoginUserDto } from './dto/login-user.dto';
 import { UserResponseDto } from './dto/user.response.dto';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { SessionGuard } from '../common/guards/session.guard';  
 
 @Controller('users')
 export class UsersController {
@@ -32,7 +33,7 @@ export class UsersController {
   /**
    * Создание пользователя (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard)  
   @Roles('admin')
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -44,7 +45,7 @@ export class UsersController {
   /**
    * Получение всех пользователей (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard)  
   @Roles('admin')
   @Get()
   async findAll(
@@ -62,7 +63,7 @@ export class UsersController {
   /**
    * Получение пользователя по ID (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard)  
   @Roles('admin')
   @Get(':id')
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<UserResponseDto> {
@@ -73,7 +74,7 @@ export class UsersController {
   /**
    * Обновление пользователя (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard)  
   @Roles('admin')
   @Patch(':id')
   async update(
@@ -87,7 +88,7 @@ export class UsersController {
   /**
    * Мягкое удаление пользователя (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard)  
   @Roles('admin')
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -99,7 +100,7 @@ export class UsersController {
   /**
    * Восстановление пользователя (только для админов)
    */
-  @UseGuards(AuthGuard('local'), RolesGuard)
+  @UseGuards(SessionGuard, RolesGuard) 
   @Roles('admin')
   @Post(':id/restore')
   @HttpCode(HttpStatus.OK)

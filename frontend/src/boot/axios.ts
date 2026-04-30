@@ -22,25 +22,12 @@ export const api: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  withCredentials: true,
 })
 
 // Интерцептор для добавления токена
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    
-    // Добавляем заголовки с данными пользователя
-    const userData = localStorage.getItem('user_data')
-    if (userData) {
-      try {
-        const user = JSON.parse(userData)
-        config.headers['X-User-Id'] = user.id
-        config.headers['X-User-Role'] = user.role
-      } catch (e) {}
-    }
     
     // Логируем запросы в development режиме 
     if (import.meta.env.DEV) {

@@ -5,6 +5,7 @@ import {
   IsDate,
   MaxLength,
   IsUUID,
+  IsNumber,
   ValidateNested,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
@@ -110,6 +111,17 @@ export class CreateEmployeeFullDto {
   @IsDate({ message: 'Дата рождения должна быть корректной датой' })
   @Transform(({ value }) => value ? new Date(value) : undefined)
   birthDate?: Date;
+
+  // Отдел
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === null || value === undefined || value === '' || value === 'null') {
+      return undefined;
+    }
+    const num = Number(value);
+    return isNaN(num) ? undefined : num;
+  })
+  departmentId?: number;
 
   // === Паспортные данные (опционально, но если есть — сохраняем в той же транзакции) ===
   @IsOptional()

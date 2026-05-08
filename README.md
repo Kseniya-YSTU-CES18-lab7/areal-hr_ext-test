@@ -332,3 +332,42 @@ npm run start:dev
 cd frontend
 npm install
 npm run dev
+```
+
+#### Недели 7-8: Контейнеризация (Docker Compose)
+
+### Неделя 7: Подготовка файлов
+- Создан `api/Dockerfile.dev` — образ бэкенда (Node 20 + ts-node для совместимости)
+- Создан `frontend/Dockerfile` — сборка Vue + Nginx alpine
+- Создан `frontend/nginx.conf` — раздача статики + прокси `/api/` - бэкенд
+- Создан `docker-compose.yml` — оркестрация 3 сервисов (db, backend, frontend)
+- Настроены `.dockerignore` и `.env.example`
+
+### Неделя 8: Завершение и отладка
+- Исправлен запуск бэкенда в Docker (замена импортов `import` - `require` для CommonJS-модулей)
+- Настроен healthcheck для всех сервисов
+- Исправлен прокси в Nginx: `location /api/ { proxy_pass http://backend:3000/; }`
+- Настроена сеть `areal_hr_network` для изоляции сервисов
+- Настроен volume `pgdata` для сохранения данных БД между перезапусками
+
+## Как запустить проект
+### Через Docker Compose
+```bash
+# 1. Клонировать репозиторий
+git clone <url-репозитория>
+cd areal-hr_ext-test
+
+# 2. Настроить окружение
+cp .env.example .env
+
+# 3. Запустить все сервисы
+docker-compose up -d
+
+# 4. Дождаться запуска
+docker-compose ps
+
+# 5. Открыть в браузере
+Фронтенд: http://localhost:9000
+Логин: admin
+Пароль: Admin@123
+```

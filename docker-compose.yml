@@ -1,20 +1,77 @@
-version: '3.8'
+#version: '3.8'
+
 services:
-  # Сервис базы данных PostgreSQL
+  # PostgreSQL Database
   db:
-    image: postgres:17-alpine           
+    image: postgres:17-alpine
     container_name: areal_hr_db
-    # Учётные данные (передаются в контейнер)        
-    environment:                       
-      POSTGRES_USER: postgres         
-      POSTGRES_PASSWORD: 159753    
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 159753
       POSTGRES_DB: hr_management_db
-    # Проброс портов: хост:контейнер
-    # Порт 5434, (т.к. 5432/5433 заняты локальной PostgreSQL на Windows)
     ports:
-      - "5434:5432"                      
+      - "5434:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data 
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    networks:
+      - areal_hr_network
+
+  # Backend (NestJS)
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev # временно
+    container_name: areal_hr_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_started  # временно
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: 159753
+      DB_NAME: hr_management_db
+      PORT: 3000
+      SESSION_SECRET: dev-secret-change-in-production
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./api/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - areal_hr_network
+
+  # Frontend (Vue + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: areal_hr_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "9000:80"
+    networks:
+      - areal_hr_network
 
 volumes:
-  pgdata:                               
+  pgdata:
+    driver: local
+
+networks:
+  areal_hr_network:
+    driver: bridge

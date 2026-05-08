@@ -1,0 +1,18 @@
+node_modules
+npm-debug.log
+dist
+build
+*.log
+.git
+.gitignore
+README.md
+.env
+.env.*
+!.env.example
+.vscode
+.idea
+*.md
+Dockerfile
+.dockerignore
+# public
+# src

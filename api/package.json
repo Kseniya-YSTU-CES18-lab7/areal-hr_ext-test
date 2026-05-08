@@ -22,7 +22,9 @@
     "migration:up": "node-pg-migrate up --migrations-dir src/migrations --database-url-env DATABASE_URL",
     "migration:down": "node-pg-migrate down --migrations-dir src/migrations --database-url-env DATABASE_URL",
     "migration:redo": "node-pg-migrate redo --migrations-dir src/migrations --database-url-env DATABASE_URL",
-    "seed:admin": "ts-node src/seed/create-admin.ts"
+    "seed:admin": "ts-node src/seed/create-admin.ts",
+    "docker:build": "docker build -t areal-hr-backend .",
+    "docker:run": "docker run -p 3000:3000 --env-file ../.env areal-hr-backend"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

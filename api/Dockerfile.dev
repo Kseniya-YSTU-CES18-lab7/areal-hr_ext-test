@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Копируем ВСЕ файлы проекта
+COPY . .
+
+# Устанавливаем ВСЕ зависимости (включая dev для ts-node)
+RUN npm ci --legacy-peer-deps
+
+# Открываем порт
+EXPOSE 3000
+
+# Запускаем ЧЕРЕЗ ts-node — БЕЗ сборки!
+CMD ["npx", "ts-node", "src/main.ts"]

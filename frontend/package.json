@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "build:docker": "vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc -b"
   },
   "dependencies": {
     "@quasar/extras": "^1.18.0",
